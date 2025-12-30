@@ -36,8 +36,8 @@ fi
 # Build and start containers
 docker compose up -d --build --remove-orphans
 
-# Install PHP dependencies (since code is bind-mounted)
-docker compose exec -T app composer install --no-dev -n --prefer-dist
+# Install PHP dependencies (run as root due to bind-mounted perms)
+docker compose exec -T -u root app composer install --no-dev -n --prefer-dist
 
 # Generate app key if missing
 docker compose exec -T app php artisan key:generate --force || true
