@@ -19,4 +19,6 @@ jobs:
             git pull origin prod
             docker compose down
             docker compose up -d --build
+            sleep 5
+            docker exec johnrak-admin-backend php artisan migrate --force
             docker image prune -f
