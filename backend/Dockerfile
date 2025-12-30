@@ -35,4 +35,4 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev \
 
 EXPOSE 9000
 USER www-data
-CMD ["php-fpm"]
+CMD ["php-fpm", "-y", "/usr/local/etc/php-fpm.conf", "-R"]
