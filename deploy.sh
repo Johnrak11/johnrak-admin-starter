@@ -51,10 +51,12 @@ fi
 docker compose exec -T app sh -lc '
   if grep -q "^APP_KEY=" .env; then
     if grep -q "^APP_KEY=$" .env; then
-      sed -i "s/^APP_KEY=$/APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')/" .env
+      KEY=$(php -r '\''echo base64_encode(random_bytes(32));'\'');
+      sed -i "s/^APP_KEY=$/APP_KEY=base64:${KEY}/" .env
     fi
   else
-    echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> .env
+    KEY=$(php -r '\''echo base64_encode(random_bytes(32));'\'');
+    echo "APP_KEY=base64:${KEY}" >> .env
   fi
 '
 
