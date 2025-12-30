@@ -21,6 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trustProxies(at: '*');
 
+        $middleware->validateCsrfTokens(except: [
+            // If you are using API token auth or handling CSRF differently for specific routes
+        ]);
+
+        // Force CORS to run on all requests
+        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+
         $middleware->alias([
             'ensure.owner' => EnsureOwner::class,
             'audit.log' => AuditLogMiddleware::class,
