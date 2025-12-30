@@ -1,0 +1,20 @@
+name: Deploy Admin
+
+on:
+  push:
+    branches: ["prod"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/projects/johnrak-admin-starter
+            git pull origin prod
+            chmod +x deploy.sh
+            ./deploy.sh

@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: ./backend
+    container_name: johnrak-admin-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+    networks:
+      - johnrak-admin-network
+    env_file: .env
+
+  web:
+    build:
+      context: ./frontend
+    container_name: johnrak-admin-web
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8081}:80"
+    networks:
+      - johnrak-admin-network
+      - web_gateway
+    depends_on:
+      - app
+
+  db:
+    image: mariadb:10.6
+    container_name: johnrak-admin-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - johnrak-admin-network
+    env_file: .env
+
+networks:
+  johnrak-admin-network:
+    driver: bridge
+  web_gateway:
+    external: true
+
+volumes:
+  db_data:

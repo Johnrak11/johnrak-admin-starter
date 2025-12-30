@@ -1,0 +1,15 @@
+:80 {
+    root * /srv
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy app:9000
+    }
+
+    handle /sanctum/* {
+        reverse_proxy app:9000
+    }
+
+    try_files {path} /index.html
+    file_server
+}
