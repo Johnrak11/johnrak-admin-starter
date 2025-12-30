@@ -99,3 +99,8 @@ Notes:
 - No `sudo` is used; ensure the `USERNAME` is in the `docker` group on the server so Docker commands run without prompts.
 - `deploy.sh` handles DB presence, container rebuild/restart, and migrations; it’s idempotent and non-interactive.
 - If seeding is required, run manually: `docker exec johnrak-admin-backend php artisan db:seed --class=PortfolioFromJsonSeeder --force`.
+
+## Backups
+- Configure in admin at Security → Backup.
+- When enabled and configured, daily DB backup runs at 12:00 AM and uploads to your S3-compatible bucket (AWS S3 free tier, Cloudflare R2, Backblaze B2, DigitalOcean Spaces).
+- Manual backup via “Backup now” button.

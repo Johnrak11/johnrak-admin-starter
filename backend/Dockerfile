@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
-    libicu-dev
+    libicu-dev \
+    mariadb-client
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*

@@ -11,6 +11,7 @@ use App\Http\Controllers\Portfolio\ProjectController;
 use App\Http\Controllers\Portfolio\SkillController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ClientPortfolioSyncController;
+use App\Http\Controllers\BackupController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -46,6 +47,9 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('securi
     Route::get('/2fa/status', [TwoFactorController::class, 'status']);
     Route::post('/2fa/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:login');
     Route::post('/portfolio-sync/token', [ClientPortfolioSyncController::class, 'issueToken'])->middleware('throttle:login');
+    Route::get('/backup/config', [BackupController::class, 'getConfig']);
+    Route::post('/backup/config', [BackupController::class, 'saveConfig']);
+    Route::post('/backup/run', [BackupController::class, 'run'])->middleware('throttle:login');
 });
 
 Route::prefix('client')->group(function () {

@@ -5,6 +5,7 @@ import Login from "../views/Login.vue";
 import AuthedLayout from "../views/AuthedLayout.vue";
 import Settings from "../views/Settings.vue";
 import Security from "../views/Security.vue";
+import SecurityBackup from "../views/SecurityBackup.vue";
 
 import Profile from "../views/portfolio/Profile.vue";
 import Experiences from "../views/portfolio/Experiences.vue";
@@ -34,6 +35,7 @@ const router = createRouter({
         { path: "/portfolio/linkedin-import", component: LinkedInImport },
         { path: "/settings", component: Settings },
         { path: "/security", component: Security },
+        { path: "/security/backup", component: SecurityBackup },
       ],
     },
   ],

@@ -75,6 +75,7 @@ const navItems = [
   { to: "/portfolio/linkedin-import", label: "LinkedIn Import" },
   { to: "/settings", label: "Settings" },
   { to: "/security", label: "Security" },
+  { to: "/security/backup", label: "Security · Backup" },
 ];
 
 const titles = {
