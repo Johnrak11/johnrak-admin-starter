@@ -26,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Force CORS to run on all requests
-        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        // $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
 
         $middleware->alias([
             'ensure.owner' => EnsureOwner::class,
