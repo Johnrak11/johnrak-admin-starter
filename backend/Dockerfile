@@ -27,11 +27,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 # Copy application code
-COPY --chown=www-data:www-data . /var/www
+COPY . /var/www
 
-# Install dependencies
-USER www-data
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Install dependencies as root then fix ownership
+RUN composer install --no-interaction --optimize-autoloader --no-dev \
+    && chown -R www-data:www-data /var/www
 
 EXPOSE 9000
+USER www-data
 CMD ["php-fpm"]
