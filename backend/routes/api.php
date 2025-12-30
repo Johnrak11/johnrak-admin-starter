@@ -14,6 +14,9 @@ use App\Http\Controllers\ClientPortfolioSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
+    Route::options('/login', function () {
+        return response()->noContent();
+    }); // Handle preflight explicitly if middleware fails
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('/login/2fa', [AuthController::class, 'login2fa'])->middleware('throttle:login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
