@@ -8,24 +8,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            set -e
-            mkdir -p ~/projects
-            cd ~/projects
-            if [ -d johnrak-admin-starter ]; then
-              cd johnrak-admin-starter
-              git fetch --all --prune
-              git checkout -f prod
-              git reset --hard origin/prod
-            else
-              git clone --branch prod https://github.com/Johnrak11/johnrak-admin-starter.git johnrak-admin-starter
-              cd johnrak-admin-starter
-            fi
-            chmod +x deploy.sh || true
-            ./deploy.sh
+            cd ~/projects/johnrak-admin-starter
+            git pull origin prod
+            docker compose down
+            docker compose up -d --build
+            docker image prune -f
