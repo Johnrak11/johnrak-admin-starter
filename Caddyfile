@@ -10,16 +10,27 @@ http://{$FRONTEND_DOMAIN} {
 }
 
 http://{$BACKEND_DOMAIN} {
+    header {
+        -Server
+        -X-Powered-By
+        -Via
+        -Alt-Svc
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
 	# Handle CORS manually in Caddy to bypass Laravel issues
 	@options {
 		method OPTIONS
 	}
-	header {
-		Access-Control-Allow-Origin "https://admin.johnrak.online"
-		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-XSRF-TOKEN"
-		Access-Control-Allow-Credentials "true"
-	}
+    header {
+        Access-Control-Allow-Origin "https://admin.johnrak.online"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-XSRF-TOKEN"
+        Access-Control-Allow-Credentials "true"
+    }
 	respond @options 204
 
 	root * /var/www/public

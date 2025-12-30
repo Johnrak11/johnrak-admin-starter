@@ -14,7 +14,10 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        \Illuminate\Support\Facades\Log::info('Login attempt received', $request->all());
+        \Illuminate\Support\Facades\Log::info('Login attempt received', [
+            'email' => (string) $request->input('email'),
+            'device_name' => (string) $request->input('device_name')
+        ]);
         $payload = json_decode($request->getContent(), true) ?: [];
         if (!empty($payload)) { $request->merge($payload); }
 
@@ -69,7 +72,10 @@ class AuthController extends Controller
             'user' => $user->only(['id', 'name', 'email', 'role']),
         ];
 
-        \Illuminate\Support\Facades\Log::info('Login successful', $response);
+        \Illuminate\Support\Facades\Log::info('Login successful', [
+            'user_id' => $user->id,
+            'email' => $user->email
+        ]);
 
         return response()->json($response);
     }

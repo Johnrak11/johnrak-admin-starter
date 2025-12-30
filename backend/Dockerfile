@@ -35,6 +35,9 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev \
     && chown -R www-data:www-data /var/www \
     && sed -i 's/listen = 127.0.0.1:9000/listen = 9000/' /usr/local/etc/php-fpm.d/www.conf
 
+# Security hardening: hide PHP version in response headers
+RUN echo "expose_php = Off" > /usr/local/etc/php/conf.d/security.ini
+
 EXPOSE 9000
 USER www-data
 CMD ["php-fpm", "-R"]
