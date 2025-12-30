@@ -32,7 +32,8 @@ COPY . /var/www
 
 # Install dependencies as root then fix ownership
 RUN composer install --no-interaction --optimize-autoloader --no-dev \
-    && chown -R www-data:www-data /var/www
+    && chown -R www-data:www-data /var/www \
+    && sed -i 's/listen = 127.0.0.1:9000/listen = 9000/' /usr/local/etc/php-fpm.d/www.conf
 
 EXPOSE 9000
 USER www-data
