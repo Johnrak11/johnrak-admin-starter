@@ -22,5 +22,6 @@ http://{$BACKEND_DOMAIN} {
 	}
 	respond @options 204
 
-	reverse_proxy backend:9000
+	root * /var/www/public
+	php_fastcgi backend:9000
 }
