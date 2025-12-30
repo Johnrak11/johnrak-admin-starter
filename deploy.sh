@@ -18,6 +18,7 @@ if [ ! -f backend/.env ]; then
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=http://localhost
+APP_KEY=
 
 DB_CONNECTION=mysql
 DB_HOST=db
@@ -42,7 +43,7 @@ docker compose exec -T -u root app composer install --no-dev -n --prefer-dist
 # Fix storage permissions
 docker compose exec -T -u root app sh -lc 'chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache'
 
-# Generate app key if missing
+# Generate app key
 docker compose exec -T app php artisan key:generate --force || true
 
 # Wait a bit for DB
