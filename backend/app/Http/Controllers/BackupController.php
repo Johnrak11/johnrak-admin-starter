@@ -51,9 +51,8 @@ class BackupController extends Controller
 
     public function run(Request $request, DatabaseBackupService $svc)
     {
-        $key = $svc->runForUser($request->user()->id);
-        if (!$key) return response()->json(['message' => 'Backup not configured'], 422);
-        return response()->json(['uploaded_key' => $key]);
+        $res = $svc->runForUser($request->user()->id);
+        if (!$res) return response()->json(['message' => 'Backup not configured'], 422);
+        return response()->json($res);
     }
 }
-

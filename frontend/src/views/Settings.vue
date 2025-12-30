@@ -55,6 +55,19 @@
             />
           </div>
 
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-medium">Accordion sidebar</div>
+              <div class="text-xs text-muted-foreground">
+                Keep only the active group expanded; collapse others.
+              </div>
+            </div>
+            <Switch
+              :model-value="settings.accordionSidebar"
+              @update:model-value="settings.setAccordionSidebar"
+            />
+          </div>
+
           <div class="rounded-lg border border-border bg-background p-3">
             <div class="text-xs text-muted-foreground">API Base URL</div>
             <div class="mt-1 break-all font-mono text-sm">
@@ -121,4 +134,3 @@ const accents = [
   { key: 'rose', preview: 'hsl(346.8 77.2% 49.8%)' }
 ]
 </script>
-

@@ -9,10 +9,10 @@ use Aws\S3\S3Client;
 
 class DatabaseBackupService
 {
-    public function runForUser(int $userId): ?string
+    public function runForUser(int $userId): ?array
     {
         $cfg = BackupConfig::where('user_id', $userId)->first();
-        if (!$cfg || !$cfg->enabled || !$cfg->s3_bucket || !$cfg->s3_access_key || !$cfg->s3_secret) {
+        if (!$cfg || !$cfg->enabled) {
             return null;
         }
 
@@ -22,11 +22,23 @@ class DatabaseBackupService
 
         $this->dumpToFile($tmp);
 
-        $key = trim($cfg->s3_path_prefix ?: 'backups', '/') . '/' . $filename;
-        $this->uploadToS3($cfg, $tmp, $key);
+        $result = [];
+        $hasS3 = ($cfg->s3_bucket && $cfg->s3_access_key && $cfg->s3_secret);
+        if ($hasS3) {
+            $key = trim($cfg->s3_path_prefix ?: 'backups', '/') . '/' . $filename;
+            $this->uploadToS3($cfg, $tmp, $key);
+            $result['uploaded_key'] = $key;
+            @unlink($tmp);
+        } else {
+            $destRel = 'backups/' . $filename;
+            @mkdir(storage_path('app/backups'), 0775, true);
+            // move to local storage
+            $destAbs = storage_path('app/' . $destRel);
+            @rename($tmp, $destAbs);
+            $result['local_path'] = $destRel;
+        }
 
-        @unlink($tmp);
-        return $key;
+        return $result;
     }
 
     private function dumpToFile(string $path): void
@@ -65,4 +77,3 @@ class DatabaseBackupService
         ]);
     }
 }
-

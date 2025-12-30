@@ -17,16 +17,30 @@
           </div>
         </div>
 
-        <nav class="mt-6 space-y-1">
-          <router-link
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            active-class="bg-accent text-accent-foreground"
-          >
-            {{ item.label }}
-          </router-link>
+        <nav class="mt-6 space-y-4">
+          <div v-for="group in navGroups" :key="group.label" class="space-y-1">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              @click="toggle(group.label)"
+            >
+              <span>{{ group.label }}</span>
+              <span class="text-muted-foreground">{{
+                collapsed[group.label] ? "▸" : "▾"
+              }}</span>
+            </button>
+            <div v-if="!collapsed[group.label]" class="space-y-1">
+              <router-link
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                active-class="bg-accent text-accent-foreground"
+              >
+                {{ item.label }}
+              </router-link>
+            </div>
+          </div>
         </nav>
 
         <div class="mt-6 border-t border-border pt-4">
@@ -53,7 +67,7 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, reactive, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useSettingsStore } from "../stores/settings";
@@ -64,19 +78,67 @@ const settings = useSettingsStore();
 const router = useRouter();
 const route = useRoute();
 
-const navItems = [
-  { to: "/portfolio/profile", label: "Portfolio · Profile" },
-  { to: "/portfolio/experiences", label: "Portfolio · Experiences" },
-  { to: "/portfolio/educations", label: "Portfolio · Educations" },
-  { to: "/portfolio/skills", label: "Portfolio · Skills" },
-  { to: "/portfolio/certifications", label: "Portfolio · Certificates" },
-  { to: "/portfolio/projects", label: "Portfolio · Projects" },
-  { to: "/portfolio/attachments", label: "Portfolio · CV & Files" },
-  { to: "/portfolio/linkedin-import", label: "LinkedIn Import" },
-  { to: "/settings", label: "Settings" },
-  { to: "/security", label: "Security" },
-  { to: "/security/backup", label: "Security · Backup" },
+const navGroups = [
+  {
+    label: "Portfolio",
+    items: [
+      { to: "/portfolio/profile", label: "Profile" },
+      { to: "/portfolio/experiences", label: "Experiences" },
+      { to: "/portfolio/educations", label: "Educations" },
+      { to: "/portfolio/skills", label: "Skills" },
+      { to: "/portfolio/certifications", label: "Certificates" },
+      { to: "/portfolio/projects", label: "Projects" },
+      { to: "/portfolio/attachments", label: "CV & Files" },
+      { to: "/portfolio/linkedin-import", label: "LinkedIn Import" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [{ to: "/settings", label: "General" }],
+  },
+  {
+    label: "Security",
+    items: [
+      { to: "/security", label: "Two-Factor & Tokens" },
+      { to: "/security/backup", label: "Backup" },
+    ],
+  },
 ];
+
+const collapsed = reactive({
+  Portfolio: false,
+  Settings: false,
+  Security: false,
+});
+function toggle(label) {
+  const next = !collapsed[label];
+  if (settings.accordionSidebar && next) {
+    Object.keys(collapsed).forEach((k) => (collapsed[k] = true));
+    collapsed[label] = false;
+  } else {
+    collapsed[label] = !collapsed[label];
+  }
+}
+
+function ensureActiveGroupOpen() {
+  if (!settings.accordionSidebar) return;
+  const path = route.path;
+  const map = {
+    Portfolio: /^\/portfolio\//,
+    Settings: /^\/settings$/,
+    Security: /^\/security(\/|$)/,
+  };
+  Object.keys(collapsed).forEach((k) => (collapsed[k] = true));
+  for (const [label, re] of Object.entries(map)) {
+    if (re.test(path)) {
+      collapsed[label] = false;
+      break;
+    }
+  }
+}
+
+onMounted(() => ensureActiveGroupOpen());
+watch(() => [route.path, settings.accordionSidebar], ensureActiveGroupOpen);
 
 const titles = {
   "/portfolio/profile": "Profile",

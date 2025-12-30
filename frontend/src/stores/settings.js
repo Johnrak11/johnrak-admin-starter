@@ -20,6 +20,7 @@ export const useSettingsStore = defineStore("settings", {
     accent: "slate",
     compactSidebar: false,
     showHints: true,
+    accordionSidebar: false,
   }),
   actions: {
     init() {
@@ -32,6 +33,8 @@ export const useSettingsStore = defineStore("settings", {
         this.compactSidebar = saved.compactSidebar;
       if (typeof saved?.showHints === "boolean")
         this.showHints = saved.showHints;
+      if (typeof saved?.accordionSidebar === "boolean")
+        this.accordionSidebar = saved.accordionSidebar;
     },
     persist() {
       localStorage.setItem(
@@ -41,6 +44,7 @@ export const useSettingsStore = defineStore("settings", {
           accent: this.accent,
           compactSidebar: this.compactSidebar,
           showHints: this.showHints,
+          accordionSidebar: this.accordionSidebar,
         })
       );
     },
@@ -63,11 +67,16 @@ export const useSettingsStore = defineStore("settings", {
       this.showHints = value;
       this.persist();
     },
+    setAccordionSidebar(value) {
+      this.accordionSidebar = value;
+      this.persist();
+    },
     reset() {
       this.mode = "dark";
       this.accent = "slate";
       this.compactSidebar = false;
       this.showHints = true;
+      this.accordionSidebar = false;
       this.persist();
     },
   },
