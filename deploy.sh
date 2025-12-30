@@ -43,12 +43,20 @@ docker compose exec -T -u root app composer install --no-dev -n --prefer-dist
 # Fix storage permissions
 docker compose exec -T -u root app sh -lc 'chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache'
 
-# Generate app key or set if empty
+# Generate app key or set if missing/empty
 if ! docker compose exec -T app php artisan key:generate --force; then
   echo "key:generate failed"
 fi
-# If APP_KEY is empty string, replace with generated value
-docker compose exec -T app sh -lc "if grep -q '^APP_KEY=$' .env; then sed -i 's/^APP_KEY=$/APP_KEY=base64:'\$(php -r 'echo base64_encode(random_bytes(32));')'/' .env; fi"
+# Ensure APP_KEY exists and is non-empty
+docker compose exec -T app sh -lc '
+  if grep -q "^APP_KEY=" .env; then
+    if grep -q "^APP_KEY=$" .env; then
+      sed -i "s/^APP_KEY=$/APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')/" .env
+    fi
+  else
+    echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> .env
+  fi
+'
 
 # Wait a bit for DB
 sleep 10
