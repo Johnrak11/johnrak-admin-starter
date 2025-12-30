@@ -86,3 +86,16 @@ Why:
 - If you prefer a separate subdomain for API, configure `admin-service.johnrak.online` in Caddy with `php_fastcgi johnrak-admin-backend:9000` and serve `/var/www/public`.
 - Keep SPA on `admin.johnrak.online` via reverse proxy.
 
+## CI/CD (GitHub Actions)
+- Workflow: `.github/workflows/deploy.yml`
+- Trigger: push to `prod`
+- Action: SSH into server using `${{ secrets.HOST }}`, `${{ secrets.USERNAME }}`, `${{ secrets.SSH_KEY }}`
+- Steps executed remotely:
+  - Clone or update repo to `~/projects/johnrak-admin-starter`
+  - Force checkout and reset to `origin/prod`
+  - Run `deploy.sh` non-interactively
+
+Notes:
+- No `sudo` is used; ensure the `USERNAME` is in the `docker` group on the server so Docker commands run without prompts.
+- `deploy.sh` handles DB presence, container rebuild/restart, and migrations; it’s idempotent and non-interactive.
+- If seeding is required, run manually: `docker exec johnrak-admin-backend php artisan db:seed --class=PortfolioFromJsonSeeder --force`.

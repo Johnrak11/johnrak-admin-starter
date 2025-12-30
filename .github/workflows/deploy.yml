@@ -15,16 +15,17 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -e
             mkdir -p ~/projects
-            if [ -d ~/projects/johnrak-admin-starter ]; then
-              cd ~/projects/johnrak-admin-starter
-              git fetch origin prod
+            cd ~/projects
+            if [ -d johnrak-admin-starter ]; then
+              cd johnrak-admin-starter
+              git fetch --all --prune
+              git checkout -f prod
               git reset --hard origin/prod
             else
-              cd ~/projects
-              git clone https://github.com/Johnrak11/johnrak-admin-starter.git
+              git clone --branch prod https://github.com/Johnrak11/johnrak-admin-starter.git johnrak-admin-starter
               cd johnrak-admin-starter
-              git checkout prod
             fi
-            chmod +x deploy.sh
+            chmod +x deploy.sh || true
             ./deploy.sh
