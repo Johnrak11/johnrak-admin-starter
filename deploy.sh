@@ -43,8 +43,11 @@ docker compose exec -T -u root app composer install --no-dev -n --prefer-dist
 # Fix storage permissions
 docker compose exec -T -u root app sh -lc 'chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache'
 
-# Generate app key
-docker compose exec -T app php artisan key:generate --force || true
+# Generate app key or append if missing
+if ! docker compose exec -T app php artisan key:generate --force; then
+  echo "key:generate failed, appending random key"
+  docker compose exec -T app sh -lc "grep -q '^APP_KEY=' .env || echo 'APP_KEY=base64:'\$(php -r 'echo base64_encode(random_bytes(32));') >> .env"
+fi
 
 # Wait a bit for DB
 sleep 10
