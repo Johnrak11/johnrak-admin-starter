@@ -14,6 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Ensure Sanctum stateful middleware is enabled for API routes if needed,
+        // though typically it's auto-applied to 'api' or 'web' depending on config.
+        // For standard CORS, Laravel 11 auto-registers it if HandleCors is present.
+        // We can explicitly trust proxies here if behind a load balancer/reverse proxy.
+
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'ensure.owner' => EnsureOwner::class,
             'audit.log' => AuditLogMiddleware::class,
