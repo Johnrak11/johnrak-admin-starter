@@ -1,0 +1,14 @@
+{
+	email {$ACME_EMAIL}
+}
+
+http://{$FRONTEND_DOMAIN} {
+	root * /srv
+	encode zstd gzip
+	try_files {path} /index.html
+	file_server
+}
+
+http://{$BACKEND_DOMAIN} {
+	reverse_proxy backend:9000
+}

@@ -1,61 +1,52 @@
 services:
-  app:
+  backend:
     build:
       context: ./backend
-    container_name: johnrak-admin-app
-    restart: unless-stopped
-    working_dir: /var/www
-    volumes:
-      - ./backend:/var/www
-    networks:
-      - johnrak-admin-network
-    env_file: .env
-
-  api:
-    image: nginx:alpine
-    container_name: johnrak-admin-api
-    restart: unless-stopped
-    volumes:
-      - ./backend:/var/www
-      - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - johnrak-admin-network
-    depends_on:
-      - app
-
-  web:
-    build:
-      context: ./frontend
-    container_name: johnrak-admin-web
-    restart: unless-stopped
-    ports:
-      - "${PORT:-8081}:80"
-    networks:
-      - johnrak-admin-network
-      - web_gateway
-    depends_on:
-      - api
-
-  db:
-    image: mariadb:10.6
-    container_name: johnrak-admin-db
+      dockerfile: Dockerfile
+    container_name: johnrak-admin-backend
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - johnrak-admin-network
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: "https://admin-service.johnrak.online"
+      FRONTEND_ORIGIN: "https://admin.johnrak.online"
+      # Force connection to host's mapped MariaDB (v-store-db:3307)
+      DB_HOST: host.docker.internal
+      DB_PORT: 3307
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - web_gateway
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: johnrak-admin-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    environment:
+      - FRONTEND_DOMAIN=admin.johnrak.online
+      - BACKEND_DOMAIN=admin-service.johnrak.online
+      - ACME_EMAIL=admin@johnrak.online
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web_gateway
+      - internal
+    depends_on:
+      - backend
 
 networks:
-  johnrak-admin-network:
-    driver: bridge
   web_gateway:
     external: true
+  internal:
 
 volumes:
-  db_data:
+  caddy_data:
+  caddy_config:
