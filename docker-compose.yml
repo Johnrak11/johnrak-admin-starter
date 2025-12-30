@@ -11,28 +11,40 @@ services:
       - johnrak-admin-network
     env_file: .env
 
+  api:
+    image: nginx:alpine
+    container_name: johnrak-admin-api
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+      - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - johnrak-admin-network
+    depends_on:
+      - app
+
   web:
     build:
       context: ./frontend
     container_name: johnrak-admin-web
     restart: unless-stopped
     ports:
-      - "${PORT:-8081}:80"
+      - ":80"
     networks:
       - johnrak-admin-network
       - web_gateway
     depends_on:
-      - app
+      - api
 
   db:
     image: mariadb:10.6
     container_name: johnrak-admin-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: 
+      MYSQL_DATABASE: 
+      MYSQL_USER: 
+      MYSQL_PASSWORD: 
     volumes:
       - db_data:/var/lib/mysql
     networks:
