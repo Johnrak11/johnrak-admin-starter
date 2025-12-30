@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="white" stroke="black" stroke-width="2"/>
+  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="black">JR</text>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      rect { fill: black; stroke: white; }
+      text { fill: white; }
+    }
+  </style>
+</svg>
