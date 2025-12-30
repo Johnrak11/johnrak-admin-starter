@@ -60,10 +60,14 @@ class AuthController extends Controller
         $tokenName = $validated['device_name'] ?? 'johnrak-admin';
         $token = $user->createToken($tokenName, ['*'])->plainTextToken;
 
-        return response()->json([
+        $response = [
             'token' => $token,
             'user' => $user->only(['id', 'name', 'email', 'role']),
-        ]);
+        ];
+
+        \Illuminate\Support\Facades\Log::info('Login successful', $response);
+
+        return response()->json($response);
     }
 
     public function login2fa(Request $request)
