@@ -10,6 +10,8 @@ services:
       APP_DEBUG: "false"
       APP_URL: "https://admin-service.johnrak.online"
       FRONTEND_ORIGIN: "https://admin.johnrak.online"
+      SANCTUM_STATEFUL_DOMAINS: "admin.johnrak.online"
+      SESSION_DOMAIN: ".johnrak.online"
       # Force connection to host's mapped MariaDB (v-store-db:3307)
       DB_HOST: host.docker.internal
       DB_PORT: 3307
