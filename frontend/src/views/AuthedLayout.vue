@@ -7,14 +7,41 @@
           settings.compactSidebar ? 'w-60' : 'w-72',
         ]"
       >
-        <div>
-          <div class="text-lg font-semibold">Johnrak</div>
-          <div
-            v-if="settings.showHints && !settings.compactSidebar"
-            class="text-xs text-muted-foreground"
-          >
-            personal admin
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-lg font-semibold">Johnrak</div>
+            <div
+              v-if="settings.showHints && !settings.compactSidebar"
+              class="text-xs text-muted-foreground"
+            >
+              personal admin
+            </div>
           </div>
+          <button
+            @click="chatWidget?.toggle()"
+            class="text-muted-foreground hover:text-foreground hover:scale-110 transition-all p-2 rounded-md hover:bg-muted"
+            title="AI Chat"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              class="h-7 w-7 sm:h-6 sm:w-6 animate-pulse" 
+            > 
+              <path d="M12 8V4H8" /> 
+              <rect width="16" height="12" x="4" y="8" rx="2" /> 
+              <path d="M2 14h2" /> 
+              <path d="M20 14h2" /> 
+              <path d="M15 13v2" /> 
+              <path d="M9 13v2" /> 
+            </svg>
+          </button>
         </div>
 
         <nav class="mt-6 space-y-4">
@@ -61,20 +88,21 @@
         </div>
 
         <router-view />
-        <ChatWidget />
+        <ChatWidget ref="chatWidget" />
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, watch, onMounted } from "vue";
+import { computed, reactive, watch, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useSettingsStore } from "../stores/settings";
 import Button from "../components/ui/Button.vue";
 import ChatWidget from "../components/ChatWidget.vue";
 
+const chatWidget = ref(null);
 const auth = useAuthStore();
 const settings = useSettingsStore();
 const router = useRouter();

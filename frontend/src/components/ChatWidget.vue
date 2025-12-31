@@ -1,12 +1,5 @@
 <template>
   <div>
-    <button
-      class="fixed bottom-4 right-4 z-50 rounded-full bg-primary text-primary-foreground px-4 py-2 shadow-lg hover:shadow-xl transition-all"
-      @click="open = !open"
-    >
-      Chat
-    </button>
-
     <div
       v-if="open"
       class="fixed bottom-20 right-4 z-50 w-[380px] rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl flex flex-col max-h-[600px]"
@@ -93,6 +86,12 @@ watch(msgs, scrollToBottom, { deep: true });
 watch(open, (val) => {
   if (val) scrollToBottom();
 });
+
+function toggle() {
+  open.value = !open.value;
+}
+
+defineExpose({ toggle });
 
 async function send() {
   const text = draft.value.trim();
