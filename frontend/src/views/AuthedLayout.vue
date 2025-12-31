@@ -61,6 +61,7 @@
         </div>
 
         <router-view />
+        <ChatWidget />
       </main>
     </div>
   </div>
@@ -72,6 +73,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useSettingsStore } from "../stores/settings";
 import Button from "../components/ui/Button.vue";
+import ChatWidget from "../components/ChatWidget.vue";
 
 const auth = useAuthStore();
 const settings = useSettingsStore();
@@ -103,6 +105,12 @@ const navGroups = [
       { to: "/security/backup", label: "Backup" },
     ],
   },
+  {
+    label: "AI Integration",
+    items: [
+      { to: "/ai/settings", label: "Settings" },
+    ],
+  },
 ];
 
 const collapsed = reactive({
@@ -127,6 +135,7 @@ function ensureActiveGroupOpen() {
     Portfolio: /^\/portfolio\//,
     Settings: /^\/settings$/,
     Security: /^\/security(\/|$)/,
+    "AI Integration": /^\/ai\//,
   };
   Object.keys(collapsed).forEach((k) => (collapsed[k] = true));
   for (const [label, re] of Object.entries(map)) {

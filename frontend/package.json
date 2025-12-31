@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "github-markdown-css": "^5.8.1",
+    "markdown-it": "^14.1.0",
     "pinia": "^2.2.6",
     "vue": "^3.5.13",
     "vue-router": "^4.4.5"
@@ -19,6 +21,6 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
-    "vite": "^7.3.0"
+    "vite": "^6.0.0"
   }
 }

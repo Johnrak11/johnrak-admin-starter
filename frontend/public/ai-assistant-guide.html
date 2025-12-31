@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Johnrak AI Assistant Guide</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; padding: 24px; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    code { padding: 2px 4px; border-radius: 6px; background: rgba(0,0,0,0.06); }
+    pre { padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.06); overflow-x: auto; }
+    ul, ol { padding-left: 1.25rem; }
+    .muted { color: #6b7280; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 500; }
+    .tag-green { background: #dcfce7; color: #166534; }
+    .tag-blue { background: #dbeafe; color: #1e40af; }
+  </style>
+  <meta name="robots" content="noindex" />
+</head>
+<body>
+  <div class="container">
+    <h1>✨ Johnrak AI Assistant Guide</h1>
+    <p class="muted">Documentation for the integrated AI chatbot that powers your portfolio admin.</p>
+
+    <h2>What It Can Do</h2>
+    <p>The Johnrak AI is a context-aware assistant designed to represent you. It has real-time access to your database, meaning it "knows" everything you've added to your portfolio.</p>
+    
+    <h3>Core Knowledge Base:</h3>
+    <ul>
+      <li><strong>Profile & Identity:</strong> Knows who "Vorak" is, your summary, headline, and contact links.</li>
+      <li><strong>Projects:</strong> Can list your projects, explain their tech stacks, and describe their features.</li>
+      <li><strong>Skills:</strong> Knows what you are good at (e.g., "Are you good at Laravel?").</li>
+      <li><strong>Experience:</strong> Can recount your work history, previous companies, and roles.</li>
+    </ul>
+
+    <h2>How It Works (Architecture)</h2>
+    <p>Unlike standard chatbots, this system uses a technique called <strong>Full Context Injection</strong>.</p>
+    <ol>
+      <li><strong>User asks a question:</strong> <em>"What projects did you build with Vue?"</em></li>
+      <li><strong>Data Retrieval:</strong> The system instantly fetches your <em>entire</em> portfolio (Profile, Projects, Skills, Experience) from the MariaDB database.</li>
+      <li><strong>Prompt Assembly:</strong> It constructs a "System Instruction" that includes your persona ("You are Johnrak...") and the raw JSON data of your portfolio.</li>
+      <li><strong>AI Processing:</strong> It sends this package to <strong>Google Gemini (Flash Model)</strong>.</li>
+      <li><strong>Response:</strong> Gemini analyzes your specific data and answers the user's question accurately, without hallucinating.</li>
+    </ol>
+
+    <h2>Setup & Configuration</h2>
+    <p>The system is designed to be low-maintenance and free to run (using Gemini's free tier).</p>
+    
+    <h3>1. Get an API Key</h3>
+    <p>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> and create a free API key.</p>
+
+    <h3>2. Configure in Admin</h3>
+    <ol>
+      <li>Navigate to <span class="tag tag-blue">Settings</span> &rarr; <span class="tag tag-blue">AI Integration</span>.</li>
+      <li>Paste your key into the <strong>Google Gemini API Key</strong> field.</li>
+      <li>Click <strong>Save</strong>. The system automatically updates the <code>.env</code> file and clears the cache.</li>
+    </ol>
+
+    <h2>Example Conversations</h2>
+    <p>Try asking the assistant these questions:</p>
+    <ul>
+      <li><em>"Who is Vorak?"</em> (Fetches from Profile)</li>
+      <li><em>"List my top 3 skills."</em> (Fetches from Skills)</li>
+      <li><em>"Tell me about the admin dashboard project."</em> (Fetches from Projects)</li>
+      <li><em>"Where did Vorak work in 2024?"</em> (Fetches from Experience)</li>
+    </ul>
+
+    <h2>Troubleshooting</h2>
+    
+    <h3>"Vorak's AI is resting..."</h3>
+    <p>This generic error message means the backend failed to get a response from Google. Common causes:</p>
+    <ul>
+      <li><strong>Missing API Key:</strong> Check Settings.</li>
+      <li><strong>Quota Exceeded:</strong> You may have hit the free tier rate limit (15 requests/minute). Wait a moment and try again.</li>
+      <li><strong>Network Issue:</strong> The server couldn't reach Google's API.</li>
+    </ul>
+
+    <h3>"I haven't added that experience..."</h3>
+    <p>The AI is strictly instructed <strong>not to lie</strong>. If you ask about "React Native" but haven't added it to your Skills list in the database, the AI will honestly say it doesn't know about it. To fix this, simply add the skill or project in your portfolio admin.</p>
+  </div>
+</body>
+</html>

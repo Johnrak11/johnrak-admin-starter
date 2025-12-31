@@ -12,6 +12,7 @@ use App\Http\Controllers\Portfolio\SkillController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ClientPortfolioSyncController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\AiController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -52,6 +53,15 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('securi
     Route::post('/backup/run', [BackupController::class, 'run'])->middleware('throttle:login');
 });
 
+Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('ai')->group(function () {
+    Route::get('/config', [AiController::class, 'config']);
+    Route::post('/config', [AiController::class, 'updateConfig']);
+    Route::post('/reindex', [AiController::class, 'reindex'])->middleware('throttle:login');
+    Route::get('/search', [AiController::class, 'search'])->middleware('throttle:ai-search');
+    Route::post('/chat', [AiController::class, 'chat'])->middleware('throttle:ai-search');
+});
+
 Route::prefix('client')->group(function () {
     Route::post('/portfolio/sync', [ClientPortfolioSyncController::class, 'sync'])->middleware('throttle:portfolio-sync');
+    Route::post('/ai/chat', [AiController::class, 'publicChat'])->middleware('throttle:ai-search');
 });
