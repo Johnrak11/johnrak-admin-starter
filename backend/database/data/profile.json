@@ -1,203 +1,204 @@
 {
-    "basics": {
-        "name": "Vorak Yun",
-        "headline": "Web Software Engineer",
-        "location": "Phnom Penh, Cambodia",
-        "summary": "With a combination of academic and practical experience, I am an effective team member or leader. By completing numerous projects, I have honed my problem-solving skills and developed expertise in both back-end and front-end processes, with a strong foundation in algorithms. I am dedicated to continuously improving my hard skills to stay current with industry trends and emerging technologies.",
-        "avatarUrl": "",
-        "email": "you@example.com",
-        "links": [
-            {
-                "label": "LinkedIn",
-                "url": "https://kh.linkedin.com/in/vorak-yun"
-            },
-            {
-                "label": "GitHub",
-                "url": "https://github.com/Johnrak11"
-            },
-            {
-                "label": "Telegram",
-                "url": "https://t.me/johnrak"
-            },
-            {
-                "label": "Instagram",
-                "url": "https://www.instagram.com/vorak.yun/"
-            },
-            {
-                "label": "Twitter",
-                "url": "https://twitter.com/Johnrak_boss"
-            },
-            {
-                "label": "Facebook",
-                "url": "https://www.facebook.com/virak.dysloy/"
-            }
-        ]
-    },
-    "highlights": [
-        {
-            "label": "Years Experience",
-            "value": "2+"
-        },
-        {
-            "label": "Projects Delivered",
-            "value": "10+"
-        },
-        {
-            "label": "Focus",
-            "value": "Full-Stack"
-        }
-    ],
-    "skills": [
-        "JavaScript",
-        "Vue.js",
-        "C#",
-        "Laravel",
-        "Adobe ColdFusion",
-        "HTML",
-        "SASS",
-        "Bootstrap",
-        "Node.js",
-        "PHP",
-        "ASP.NET",
-        "MariaDB",
-        "MySQL",
-        "Java",
-        "Python",
-        "Azure"
-    ],
-    "experience": [
-        {
-            "company": "Sourceamax",
-            "title": "Web Software Engineer",
-            "location": "Phnom Penh, Cambodia",
-            "start": "2024-02",
-            "end": null,
-            "bullets": [
-                "Specialized in Adobe ColdFusion and C# development.",
-                "Collaborated on full-stack web software engineering projects."
-            ],
-            "url": "https://www.sourceamax.asia"
-        },
-        {
-            "company": "Sourceamax",
-            "title": "Web Developer Internship",
-            "location": "Phnom Penh, Cambodia",
-            "start": "2023-08",
-            "end": "2024-01",
-            "bullets": [
-                "Focused on Vue.js and Back-End Web Development.",
-                "Gained hands-on experience in software development lifecycle."
-            ],
-            "url": "https://www.sourceamax.asia"
-        }
-    ],
-    "projects": [
-        {
-            "name": "Johnrak Admin",
-            "tagline": "Personal admin dashboard to manage projects and portfolio.",
-            "stack": [
-                "Laravel",
-                "Vue 3",
-                "Sanctum"
-            ],
-            "links": [
-                {
-                    "label": "Admin",
-                    "url": "https://admin.johnrak.online"
-                }
-            ]
-        },
-        {
-            "name": "GoLearn",
-            "tagline": "TypeScript learning repository",
-            "stack": [
-                "TypeScript"
-            ],
-            "links": [
-                {
-                    "label": "GitHub",
-                    "url": "https://github.com/Johnrak11/GoLearn"
-                }
-            ]
-        },
-        {
-            "name": "auth-mvc",
-            "tagline": "Authentication system with MVC architecture",
-            "stack": [
-                "PHP"
-            ],
-            "links": [
-                {
-                    "label": "GitHub",
-                    "url": "https://github.com/Johnrak11/auth-mvc"
-                }
-            ]
-        },
-        {
-            "name": "web1",
-            "tagline": "HTML Web Project",
-            "stack": [
-                "HTML"
-            ],
-            "links": [
-                {
-                    "label": "GitHub",
-                    "url": "https://github.com/Johnrak11/web1"
-                },
-                {
-                    "label": "Site",
-                    "url": "https://johnrak11.github.io/web1/"
-                }
-            ]
-        },
-        {
-            "name": "TikTok",
-            "tagline": "TikTok Clone Project",
-            "stack": [
-                "HTML"
-            ],
-            "links": [
-                {
-                    "label": "GitHub",
-                    "url": "https://github.com/Johnrak11/TikTok"
-                },
-                {
-                    "label": "Site",
-                    "url": "https://johnrak11.github.io/TikTok/"
-                }
-            ]
-        }
-    ],
-    "certifications": [
-        {
-            "name": "Microsoft Certified: Azure Fundamentals",
-            "issuer": "Microsoft",
-            "issued": "2024-01-16",
-            "expires": null,
-            "url": "https://learn.microsoft.com/en-us/users/VorakYUN-6182/credentials/D278D306CB85F4FD?ref=https%3a%2f%2fwww.linkedin.com%2f"
-        },
-        {
-            "name": "Adobe Certified Professional - Adobe ColdFusion",
-            "issuer": "Adobe",
-            "issued": "2025-08-29",
-            "expires": "2027-08-29",
-            "url": "https://certification.adobe.com/credential/verify/1fc7c062-8528-11f0-8ca0-42010a400fd3/linkedin"
-        }
-    ],
-    "education": [
-        {
-            "school": "Passerelles Numériques Cambodia (PNC)",
-            "degree": "Associate's degree, IT Web Programming",
-            "start": "2021-01",
-            "end": "2023-12",
-            "url": "https://www.passerellesnumeriques.org/fr/"
-        },
-        {
-            "school": "Asia Euro University (AEU)",
-            "degree": "Bachelor's degree, Computer Science",
-            "start": "2021",
-            "end": "Present",
-            "url": "https://www.aeu.edu.kh/kh"
-        }
+  "basics": {
+    "name": "Vorak Yun",
+    "headline": "Web Software Engineer",
+    "location": "Phnom Penh, Cambodia",
+    "aboutMe": "With a combination of academic and practical experience, I am an effective team member or leader. By completing numerous projects, I have honed my problem-solving skills and developed expertise in both back-end and front-end processes, with a strong foundation in algorithms. I am dedicated to continuously improving my hard skills to stay current with industry trends and emerging technologies.",
+    "summary": "With a combination of academic and practical experience, I am an effective team member or leader. By completing numerous projects, I have honed my problem-solving skills and developed expertise in both back-end and front-end processes, with a strong foundation in algorithms. I am dedicated to continuously improving my hard skills to stay current with industry trends and emerging technologies.",
+    "avatarUrl": "",
+    "email": "vorakyun@gmail.com",
+    "links": [
+      {
+        "label": "LinkedIn",
+        "url": "https://kh.linkedin.com/in/vorak-yun"
+      },
+      {
+        "label": "GitHub",
+        "url": "https://github.com/Johnrak11"
+      },
+      {
+        "label": "Telegram",
+        "url": "https://t.me/johnrak"
+      },
+      {
+        "label": "Instagram",
+        "url": "https://www.instagram.com/vorak.yun/"
+      },
+      {
+        "label": "Twitter",
+        "url": "https://twitter.com/Johnrak_boss"
+      },
+      {
+        "label": "Facebook",
+        "url": "https://www.facebook.com/virak.dysloy/"
+      }
     ]
+  },
+  "highlights": [
+    {
+      "label": "Years Experience",
+      "value": "2+"
+    },
+    {
+      "label": "Projects Delivered",
+      "value": "10+"
+    },
+    {
+      "label": "Focus",
+      "value": "Full-Stack"
+    }
+  ],
+  "skills": [
+    "JavaScript",
+    "Vue.js",
+    "C#",
+    "Laravel",
+    "Adobe ColdFusion",
+    "HTML",
+    "SASS",
+    "Bootstrap",
+    "Node.js",
+    "PHP",
+    "ASP.NET",
+    "MariaDB",
+    "MySQL",
+    "Java",
+    "Python",
+    "Azure"
+  ],
+  "experience": [
+    {
+      "company": "Sourceamax",
+      "title": "Web Software Engineer",
+      "location": "Phnom Penh, Cambodia",
+      "start": "2024-02",
+      "end": null,
+      "bullets": [
+        "Specialized in Adobe ColdFusion and C# development.",
+        "Collaborated on full-stack web software engineering projects."
+      ],
+      "url": "https://www.sourceamax.asia"
+    },
+    {
+      "company": "Sourceamax",
+      "title": "Web Developer Internship",
+      "location": "Phnom Penh, Cambodia",
+      "start": "2023-08",
+      "end": "2024-01",
+      "bullets": [
+        "Focused on Vue.js and Back-End Web Development.",
+        "Gained hands-on experience in software development lifecycle."
+      ],
+      "url": "https://www.sourceamax.asia"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Johnrak Admin",
+      "tagline": "Personal admin dashboard to manage projects and portfolio.",
+      "stack": [
+        "Laravel",
+        "Vue 3",
+        "Sanctum"
+      ],
+      "links": [
+        {
+          "label": "Admin",
+          "url": "https://admin.johnrak.online"
+        }
+      ]
+    },
+    {
+      "name": "GoLearn",
+      "tagline": "TypeScript learning repository",
+      "stack": [
+        "TypeScript"
+      ],
+      "links": [
+        {
+          "label": "GitHub",
+          "url": "https://github.com/Johnrak11/GoLearn"
+        }
+      ]
+    },
+    {
+      "name": "auth-mvc",
+      "tagline": "Authentication system with MVC architecture",
+      "stack": [
+        "PHP"
+      ],
+      "links": [
+        {
+          "label": "GitHub",
+          "url": "https://github.com/Johnrak11/auth-mvc"
+        }
+      ]
+    },
+    {
+      "name": "web1",
+      "tagline": "HTML Web Project",
+      "stack": [
+        "HTML"
+      ],
+      "links": [
+        {
+          "label": "GitHub",
+          "url": "https://github.com/Johnrak11/web1"
+        },
+        {
+          "label": "Site",
+          "url": "https://johnrak11.github.io/web1/"
+        }
+      ]
+    },
+    {
+      "name": "TikTok",
+      "tagline": "TikTok Clone Project",
+      "stack": [
+        "HTML"
+      ],
+      "links": [
+        {
+          "label": "GitHub",
+          "url": "https://github.com/Johnrak11/TikTok"
+        },
+        {
+          "label": "Site",
+          "url": "https://johnrak11.github.io/TikTok/"
+        }
+      ]
+    }
+  ],
+  "certifications": [
+    {
+      "name": "Microsoft Certified: Azure Fundamentals",
+      "issuer": "Microsoft",
+      "issued": "2024-01-16",
+      "expires": null,
+      "url": "https://learn.microsoft.com/en-us/users/VorakYUN-6182/credentials/D278D306CB85F4FD?ref=https%3a%2f%2fwww.linkedin.com%2f"
+    },
+    {
+      "name": "Adobe Certified Professional - Adobe ColdFusion",
+      "issuer": "Adobe",
+      "issued": "2025-08-29",
+      "expires": "2027-08-29",
+      "url": "https://certification.adobe.com/credential/verify/1fc7c062-8528-11f0-8ca0-42010a400fd3/linkedin"
+    }
+  ],
+  "education": [
+    {
+      "school": "Asia Euro University (AEU)",
+      "degree": "Bachelor's degree, Computer Science",
+      "start": "2021",
+      "end": "Present",
+      "url": "https://www.aeu.edu.kh/kh"
+    },
+    {
+      "school": "Passerelles Numériques Cambodia (PNC)",
+      "degree": "Associate's degree, IT Web Programming",
+      "start": "2021-01",
+      "end": "2023-12",
+      "url": "https://www.passerellesnumeriques.org/fr/"
+    }
+  ]
 }

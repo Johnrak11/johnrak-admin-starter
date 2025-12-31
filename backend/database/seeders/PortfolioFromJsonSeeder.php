@@ -30,6 +30,7 @@ class PortfolioFromJsonSeeder extends Seeder
         $profile->fill([
             'headline' => $data['basics']['headline'] ?? null,
             'summary' => $data['basics']['summary'] ?? null,
+            'about_me' => $data['basics']['aboutMe'] ?? null,
             'location' => $data['basics']['location'] ?? null,
             'email_public' => $data['basics']['email'] ?? null,
             'website_url' => $getLink('Site') ?? null,

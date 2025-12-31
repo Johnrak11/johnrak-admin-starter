@@ -11,7 +11,7 @@ class PortfolioProfile extends Model
 
     protected $table = 'portfolio_profiles';
 
-    protected $fillable = ['user_id', 'headline', 'summary', 'location', 'email_public', 'phone_public', 'website_url', 'github_url', 'linkedin_url', 'avatar_url'];
+    protected $fillable = ['user_id', 'headline', 'summary', 'about_me', 'location', 'email_public', 'phone_public', 'website_url', 'github_url', 'linkedin_url', 'avatar_url'];
 
     protected $hidden = [];
 }

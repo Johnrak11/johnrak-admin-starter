@@ -41,9 +41,19 @@
           <Label>Summary</Label>
           <textarea
             v-model="form.summary"
+            class="min-h-[100px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            placeholder="Write a short summary..."
+          />
+        </div>
+
+        <div class="md:col-span-2 space-y-2">
+          <Label>About Me</Label>
+          <textarea
+            v-model="form.about_me"
             class="min-h-[140px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground
                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            placeholder="Write a short bio..."
+            placeholder="Write a detailed about me section..."
           />
         </div>
       </div>
@@ -66,6 +76,7 @@ const loading = ref(false)
 const form = reactive({
   headline: '',
   summary: '',
+  about_me: '',
   location: '',
   website_url: '',
   github_url: '',
