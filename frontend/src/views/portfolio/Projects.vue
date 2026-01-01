@@ -28,12 +28,14 @@
           :key="it.id"
           class="rounded-xl border border-border bg-muted/30 p-4"
         >
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex-1">
-              <div class="text-sm font-medium text-foreground">
+          <div
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-foreground truncate">
                 {{ headline(it) }}
               </div>
-              <div class="mt-1 text-sm text-muted-foreground">
+              <div class="mt-1 text-sm text-muted-foreground truncate">
                 {{ subtitle(it) }}
               </div>
               <div
@@ -43,9 +45,13 @@
                 {{ it.description }}
               </div>
             </div>
-            <div class="flex gap-2">
-              <Button variant="ghost" @click="openEdit(it)">Edit</Button>
-              <Button variant="danger" @click="remove(it)">Delete</Button>
+            <div class="flex gap-2 self-end sm:self-auto">
+              <Button variant="ghost" size="sm" @click="openEdit(it)"
+                >Edit</Button
+              >
+              <Button variant="danger" size="sm" @click="remove(it)"
+                >Delete</Button
+              >
             </div>
           </div>
         </div>
@@ -55,10 +61,10 @@
     <!-- modal -->
     <div
       v-if="modal.open"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm overflow-y-auto"
     >
       <div
-        class="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg"
+        class="w-full max-w-[95vw] md:max-w-2xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg my-8 md:my-0"
       >
         <div class="flex items-center justify-between">
           <div class="font-semibold">
@@ -217,7 +223,9 @@
           </div>
 
           <!-- Right: Preview -->
-          <div class="w-2/3 p-4 flex flex-col gap-4">
+          <div
+            class="w-full md:w-2/3 p-4 flex flex-col gap-4 h-full overflow-y-auto"
+          >
             <div class="flex items-center justify-between">
               <Label>Generated Result (Markdown)</Label>
               <div

@@ -1,9 +1,93 @@
 <template>
   <div class="min-h-screen bg-background text-foreground">
+    <!-- Mobile Header -->
+    <header
+      class="md:hidden sticky top-0 z-40 w-full border-b border-border bg-card p-4 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          @click="mobileMenuOpen = true"
+          class="text-muted-foreground hover:text-foreground"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <span class="font-semibold text-lg">Johnrak</span>
+      </div>
+      <div class="text-sm font-medium truncate max-w-[150px]">
+        {{ pageTitle }}
+      </div>
+    </header>
+
+    <!-- Mobile Drawer -->
+    <div v-if="mobileMenuOpen" class="fixed inset-0 z-50 flex md:hidden">
+      <!-- Backdrop -->
+      <div
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm"
+        @click="mobileMenuOpen = false"
+      ></div>
+
+      <!-- Sidebar Content -->
+      <div
+        class="relative flex w-full max-w-xs flex-1 flex-col bg-card p-6 shadow-xl transition-all h-full overflow-y-auto"
+      >
+        <div class="flex items-center justify-between mb-6">
+          <div class="text-xl font-bold">Johnrak</div>
+          <button @click="mobileMenuOpen = false" class="text-muted-foreground">
+            ✕
+          </button>
+        </div>
+
+        <nav class="space-y-6 flex-1">
+          <div v-for="group in navGroups" :key="group.label" class="space-y-2">
+            <div
+              class="text-sm font-semibold text-foreground/70 uppercase tracking-wider"
+            >
+              {{ group.label }}
+            </div>
+            <div class="space-y-1">
+              <router-link
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                active-class="bg-accent text-accent-foreground font-medium"
+                @click="mobileMenuOpen = false"
+              >
+                {{ item.label }}
+              </router-link>
+            </div>
+          </div>
+        </nav>
+
+        <div class="mt-6 border-t border-border pt-4">
+          <div class="text-xs text-muted-foreground">Signed in as</div>
+          <div class="text-sm font-medium truncate">{{ auth.user?.email }}</div>
+          <Button class="mt-3 w-full" variant="ghost" @click="onLogout"
+            >Logout</Button
+          >
+        </div>
+      </div>
+    </div>
+
     <div class="flex">
+      <!-- Desktop Sidebar -->
       <aside
         :class="[
-          'sticky top-0 h-screen border-r border-border bg-card p-4',
+          'hidden md:block sticky top-0 h-screen border-r border-border bg-card p-4',
           settings.compactSidebar ? 'w-60' : 'w-72',
         ]"
       >
@@ -34,7 +118,7 @@
               stroke-linejoin="round"
               class="h-7 w-7 sm:h-6 sm:w-6 animate-pulse"
             >
-              <path d="M12 8V4H8" />
+              4" />
               <rect width="16" height="12" x="4" y="8" rx="2" />
               <path d="M2 14h2" />
               <path d="M20 14h2" />
@@ -79,10 +163,13 @@
         </div>
       </aside>
 
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-4 md:p-6 overflow-x-hidden min-w-0">
         <div class="mb-6">
-          <div class="text-2xl font-semibold">{{ pageTitle }}</div>
-          <div v-if="settings.showHints" class="text-sm text-muted-foreground">
+          <div class="text-2xl font-semibold truncate">{{ pageTitle }}</div>
+          <div
+            v-if="settings.showHints"
+            class="text-sm text-muted-foreground truncate"
+          >
             Secure admin dashboard
           </div>
         </div>
@@ -103,6 +190,7 @@ import Button from "../components/ui/Button.vue";
 import ChatWidget from "../components/ChatWidget.vue";
 
 const chatWidget = ref(null);
+const mobileMenuOpen = ref(false);
 const auth = useAuthStore();
 const settings = useSettingsStore();
 const router = useRouter();
@@ -127,20 +215,14 @@ const navGroups = [
     ],
   },
   {
-    label: "AI Integration",
-    items: [{ to: "/ai/settings", label: "Gemini Configuration" }],
-  },
-
-  {
-    label: "Security",
+    label: "System",
     items: [
-      { to: "/security", label: "Two-Factor & Tokens" },
-      { to: "/security/backup", label: "Backup" },
+      { to: "/ai/chat", label: "Chat with AI" },
+      { to: "/settings", label: "General Settings" },
+      { to: "/ai/settings", label: "Gemini Configuration" },
+      { to: "/security", label: "Security & Tokens" },
+      { to: "/security/backup", label: "Backups" },
     ],
-  },
-  {
-    label: "Settings",
-    items: [{ to: "/settings", label: "General" }],
   },
 ];
 const collapsed = reactive({
@@ -187,6 +269,7 @@ const titles = {
   "/portfolio/projects": "Projects",
   "/portfolio/attachments": "CV & Files",
   "/portfolio/linkedin-import": "LinkedIn Import",
+  "/ai/chat": "Chat with AI",
   "/settings": "Settings",
   "/security": "Security",
 };

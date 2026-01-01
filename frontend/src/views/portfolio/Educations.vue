@@ -5,7 +5,9 @@
         <div class="flex items-center justify-between">
           <div>
             <div class="font-semibold">Educations</div>
-            <div class="text-sm text-muted-foreground">Add / edit your educations.</div>
+            <div class="text-sm text-muted-foreground">
+              Add / edit your educations.
+            </div>
           </div>
           <Button @click="openCreate">Add</Button>
         </div>
@@ -21,16 +23,35 @@
           No items yet.
         </div>
 
-        <div v-for="it in items" :key="it.id" class="rounded-xl border border-border bg-muted/30 p-4">
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex-1">
-              <div class="text-sm font-medium text-foreground">{{ headline(it) }}</div>
-              <div class="mt-1 text-sm text-muted-foreground">{{ subtitle(it) }}</div>
-              <div v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-3">{{ it.description }}</div>
+        <div
+          v-for="it in items"
+          :key="it.id"
+          class="rounded-xl border border-border bg-muted/30 p-4"
+        >
+          <div
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-foreground truncate">
+                {{ headline(it) }}
+              </div>
+              <div class="mt-1 text-sm text-muted-foreground truncate">
+                {{ subtitle(it) }}
+              </div>
+              <div
+                v-if="it.description"
+                class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-3"
+              >
+                {{ it.description }}
+              </div>
             </div>
-            <div class="flex gap-2">
-              <Button variant="ghost" @click="openEdit(it)">Edit</Button>
-              <Button variant="danger" @click="remove(it)">Delete</Button>
+            <div class="flex gap-2 self-end sm:self-auto">
+              <Button variant="ghost" size="sm" @click="openEdit(it)"
+                >Edit</Button
+              >
+              <Button variant="danger" size="sm" @click="remove(it)"
+                >Delete</Button
+              >
             </div>
           </div>
         </div>
@@ -40,11 +61,15 @@
     <!-- modal -->
     <div
       v-if="modal.open"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm overflow-y-auto"
     >
-      <div class="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg">
+      <div
+        class="w-full max-w-[95vw] md:max-w-2xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg my-8 md:my-0"
+      >
         <div class="flex items-center justify-between">
-          <div class="font-semibold">{{ modal.mode === 'create' ? 'Add' : 'Edit' }}</div>
+          <div class="font-semibold">
+            {{ modal.mode === "create" ? "Add" : "Edit" }}
+          </div>
           <button
             type="button"
             class="rounded-md text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -56,44 +81,51 @@
 
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div class="space-y-2">
-              <Label>School</Label>
-              <Input v-model="draft.school" type="text" placeholder="University" />
-            </div>
+            <Label>School</Label>
+            <Input
+              v-model="draft.school"
+              type="text"
+              placeholder="University"
+            />
+          </div>
           <div class="space-y-2">
-              <Label>Degree</Label>
-              <Input v-model="draft.degree" type="text" placeholder="Bachelor" />
-            </div>
+            <Label>Degree</Label>
+            <Input v-model="draft.degree" type="text" placeholder="Bachelor" />
+          </div>
           <div class="space-y-2">
-              <Label>Field of Study</Label>
-              <Input v-model="draft.field_of_study" type="text" placeholder="Computer Science" />
-            </div>
+            <Label>Field of Study</Label>
+            <Input
+              v-model="draft.field_of_study"
+              type="text"
+              placeholder="Computer Science"
+            />
+          </div>
           <div class="space-y-2">
-              <Label>Start Date</Label>
-              <Input v-model="draft.start_date" type="date" placeholder="" />
-            </div>
+            <Label>Start Date</Label>
+            <Input v-model="draft.start_date" type="date" placeholder="" />
+          </div>
           <div class="space-y-2">
-              <Label>End Date</Label>
-              <Input v-model="draft.end_date" type="date" placeholder="" />
-            </div>
+            <Label>End Date</Label>
+            <Input v-model="draft.end_date" type="date" placeholder="" />
+          </div>
           <div class="md:col-span-2 space-y-2">
-              <div class="flex items-center justify-between">
-                <Label>Description</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  @click="openGenerator"
-                  class="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                >
-                  ✨ Generate Description
-                </Button>
-              </div>
-              <textarea
-                v-model="draft.description"
-                class="min-h-[110px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                placeholder="Highlights..."
-              />
+            <div class="flex items-center justify-between">
+              <Label>Description</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="openGenerator"
+                class="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              >
+                ✨ Generate Description
+              </Button>
             </div>
+            <textarea
+              v-model="draft.description"
+              class="min-h-[110px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              placeholder="Highlights..."
+            />
+          </div>
           <div class="space-y-2">
             <Label>Sort order</Label>
             <Input v-model="draft.sort_order" type="number" placeholder="0" />
@@ -102,12 +134,19 @@
 
         <div class="mt-6 flex justify-end gap-2">
           <Button variant="ghost" @click="close">Cancel</Button>
-          <Button @click="save" :disabled="saving">{{ saving ? 'Saving...' : 'Save' }}</Button>
+          <Button @click="save" :disabled="saving">{{
+            saving ? "Saving..." : "Save"
+          }}</Button>
         </div>
       </div>
     </div>
 
-    <Toast :show="toast.show" :title="toast.title" :message="toast.message" @close="toast.show=false" />
+    <Toast
+      :show="toast.show"
+      :title="toast.title"
+      :message="toast.message"
+      @close="toast.show = false"
+    />
 
     <!-- Generator Modal -->
     <div
@@ -115,7 +154,7 @@
       class="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm"
     >
       <div
-        class="w-full max-w-5xl h-[80vh] rounded-2xl border border-border bg-card flex flex-col shadow-2xl"
+        class="w-full max-w-[95vw] md:max-w-5xl h-[90vh] md:h-[80vh] rounded-2xl border border-border bg-card flex flex-col shadow-2xl"
       >
         <div
           class="flex items-center justify-between border-b border-border p-4"
@@ -132,10 +171,10 @@
           </button>
         </div>
 
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
           <!-- Left: Input -->
           <div
-            class="w-1/3 border-r border-border p-4 flex flex-col gap-4 bg-muted/10"
+            class="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-border p-4 flex flex-col gap-4 bg-muted/10 h-1/2 md:h-full overflow-y-auto"
           >
             <div class="space-y-2 flex-1 flex flex-col">
               <Label>Manual Notes</Label>
@@ -157,7 +196,9 @@
           </div>
 
           <!-- Right: Preview -->
-          <div class="w-2/3 p-4 flex flex-col gap-4">
+          <div
+            class="w-full md:w-2/3 p-4 flex flex-col gap-4 h-1/2 md:h-full overflow-y-auto"
+          >
             <div class="flex items-center justify-between">
               <Label>Generated Result (Markdown)</Label>
               <div
@@ -186,35 +227,34 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { api } from '../../lib/api'
-import Card from '../../components/ui/Card.vue'
-import Input from '../../components/ui/Input.vue'
-import Label from '../../components/ui/Label.vue'
-import Button from '../../components/ui/Button.vue'
-import Toast from '../../components/ui/Toast.vue'
-import { normalizeSortOrder } from './_crudHelpers'
+import { onMounted, reactive, ref } from "vue";
+import { api } from "../../lib/api";
+import Card from "../../components/ui/Card.vue";
+import Input from "../../components/ui/Input.vue";
+import Label from "../../components/ui/Label.vue";
+import Button from "../../components/ui/Button.vue";
+import Toast from "../../components/ui/Toast.vue";
+import { normalizeSortOrder } from "./_crudHelpers";
 
-const loading = ref(false)
-const saving = ref(false)
-const items = ref([])
+const loading = ref(false);
+const saving = ref(false);
+const items = ref([]);
 
-const modal = reactive({ open: false, mode: 'create', id: null })
+const modal = reactive({ open: false, mode: "create", id: null });
 
 const draft = reactive({
-  school: '',
-  degree: '',
-  field_of_study: '',
-  start_date: '',
-  end_date: '',
-  description: '',
-  sort_order: 0
-})
+  school: "",
+  degree: "",
+  field_of_study: "",
+  start_date: "",
+  end_date: "",
+  description: "",
+  sort_order: 0,
+});
 
 const generator = reactive({
   open: false,
@@ -223,37 +263,37 @@ const generator = reactive({
   result: "",
 });
 
-const toast = reactive({ show: false, title: 'Saved', message: '' })
+const toast = reactive({ show: false, title: "Saved", message: "" });
 
 function resetDraft() {
-  draft.school = ''
-  draft.degree = ''
-  draft.field_of_study = ''
-  draft.start_date = ''
-  draft.end_date = ''
-  draft.description = ''
-  draft.sort_order = 0
+  draft.school = "";
+  draft.degree = "";
+  draft.field_of_study = "";
+  draft.start_date = "";
+  draft.end_date = "";
+  draft.description = "";
+  draft.sort_order = 0;
 }
 
 function openCreate() {
-  resetDraft()
-  modal.open = true
-  modal.mode = 'create'
-  modal.id = null
+  resetDraft();
+  modal.open = true;
+  modal.mode = "create";
+  modal.id = null;
 }
 
 function openEdit(it) {
-  resetDraft()
-  draft.school = it.school ?? ''
-  draft.degree = it.degree ?? ''
-  draft.field_of_study = it.field_of_study ?? ''
-  draft.start_date = it.start_date ?? ''
-  draft.end_date = it.end_date ?? ''
-  draft.description = it.description ?? ''
-  draft.sort_order = it.sort_order ?? 0
-  modal.open = true
-  modal.mode = 'edit'
-  modal.id = it.id
+  resetDraft();
+  draft.school = it.school ?? "";
+  draft.degree = it.degree ?? "";
+  draft.field_of_study = it.field_of_study ?? "";
+  draft.start_date = it.start_date ?? "";
+  draft.end_date = it.end_date ?? "";
+  draft.description = it.description ?? "";
+  draft.sort_order = it.sort_order ?? 0;
+  modal.open = true;
+  modal.mode = "edit";
+  modal.id = it.id;
 }
 
 function openGenerator() {
@@ -269,7 +309,7 @@ async function generate() {
   try {
     const res = await api().post("/api/ai/case-study", {
       notes: generator.notes,
-      type: 'education'
+      type: "education",
     });
     generator.result = res.data?.markdown || "";
   } catch (e) {
@@ -289,30 +329,30 @@ function close() {
 }
 
 function headline(it) {
-  return it.name || it.title || it.school || it.company || `#${it.id}`
+  return it.name || it.title || it.school || it.company || `#${it.id}`;
 }
 
 function subtitle(it) {
-  const parts = []
-  if (it.company && it.title) parts.push(`${it.title} @ ${it.company}`)
-  if (it.school) parts.push(it.school)
-  if (it.issuer) parts.push(it.issuer)
-  if (it.location) parts.push(it.location)
-  return parts.filter(Boolean).join(' · ')
+  const parts = [];
+  if (it.company && it.title) parts.push(`${it.title} @ ${it.company}`);
+  if (it.school) parts.push(it.school);
+  if (it.issuer) parts.push(it.issuer);
+  if (it.location) parts.push(it.location);
+  return parts.filter(Boolean).join(" · ");
 }
 
 async function load() {
-  loading.value = true
+  loading.value = true;
   try {
-    const res = await api().get('/api/portfolio/educations')
-    items.value = res.data.items || []
+    const res = await api().get("/api/portfolio/educations");
+    items.value = res.data.items || [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function save() {
-  saving.value = true
+  saving.value = true;
   try {
     const payload = {
       school: draft.school,
@@ -321,35 +361,35 @@ async function save() {
       start_date: draft.start_date,
       end_date: draft.end_date,
       description: draft.description,
-      sort_order: normalizeSortOrder(draft.sort_order)
-    }
+      sort_order: normalizeSortOrder(draft.sort_order),
+    };
 
-    if (modal.mode === 'create') {
-      await api().post('/api/portfolio/educations', payload)
-      toast.title = 'Created'
-      toast.message = 'Item created.'
+    if (modal.mode === "create") {
+      await api().post("/api/portfolio/educations", payload);
+      toast.title = "Created";
+      toast.message = "Item created.";
     } else {
-      await api().put(`/api/portfolio/educations/${modal.id}`, payload)
-      toast.title = 'Updated'
-      toast.message = 'Item updated.'
+      await api().put(`/api/portfolio/educations/${modal.id}`, payload);
+      toast.title = "Updated";
+      toast.message = "Item updated.";
     }
 
-    toast.show = true
-    close()
-    await load()
+    toast.show = true;
+    close();
+    await load();
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function remove(it) {
-  if (!confirm('Delete this item?')) return
-  await api().delete(`/api/portfolio/educations/${it.id}`)
-  toast.title = 'Deleted'
-  toast.message = 'Item deleted.'
-  toast.show = true
-  await load()
+  if (!confirm("Delete this item?")) return;
+  await api().delete(`/api/portfolio/educations/${it.id}`);
+  toast.title = "Deleted";
+  toast.message = "Item deleted.";
+  toast.show = true;
+  await load();
 }
 
-onMounted(load)
+onMounted(load);
 </script>
