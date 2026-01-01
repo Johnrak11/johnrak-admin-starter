@@ -3,86 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AWS S3 Setup For Backups</title>
+  <title>Cloudflare R2 Backup Setup</title>
   <style>
     :root { color-scheme: light dark; }
     body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; padding: 24px; line-height: 1.6; }
     .container { max-width: 800px; margin: 0 auto; }
     h1 { font-size: 1.5rem; margin-bottom: 0.75rem; }
     h2 { font-size: 1.1rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
-    code { padding: 2px 4px; border-radius: 6px; background: rgba(0,0,0,0.06); }
+    code { padding: 2px 4px; border-radius: 6px; background: rgba(0,0,0,0.06); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9em; }
     pre { padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.06); overflow-x: auto; }
     ul, ol { padding-left: 1.25rem; }
     .muted { color: #6b7280; }
+    .step { margin-bottom: 1.5rem; }
+    .highlight { background-color: #e0f2fe; padding: 2px 4px; border-radius: 4px; color: #0c4a6e; }
   </style>
   <meta name="robots" content="noindex" />
 </head>
 <body>
   <div class="container">
-    <h1>AWS S3 Setup For Backups</h1>
-    <p class="muted">Use this guide to get <code>s3_region</code>, <code>s3_bucket</code>, <code>s3_access_key</code>, and <code>s3_secret</code> for the admin Backup settings.</p>
+    <h1>Cloudflare R2 Backup Setup</h1>
+    <p class="muted">Follow this guide to configure your admin panel to back up databases to Cloudflare R2 automatically.</p>
 
-    <h2>What You Need</h2>
-    <ul>
-      <li><code>s3_region</code>: your bucket region (e.g., <code>ap-southeast-1</code>)</li>
-      <li><code>s3_bucket</code>: your bucket name</li>
-      <li><code>s3_access_key</code> and <code>s3_secret</code>: IAM user credentials</li>
-      <li>Optional: <code>s3_path_prefix</code> such as <code>backups</code></li>
-    </ul>
-
-    <h2>Create S3 Bucket</h2>
+    <h2>1. Create R2 Bucket</h2>
     <ol>
-      <li>AWS Console → S3 → Buckets → Create bucket</li>
-      <li>Pick a unique name and select your region (copy to <code>s3_region</code>)</li>
-      <li>Keep “Block all public access” enabled</li>
-      <li>Optional: add a lifecycle rule to expire old backups</li>
+      <li>Log in to the <a href="https://dash.cloudflare.com/" target="_blank">Cloudflare Dashboard</a>.</li>
+      <li>Navigate to <strong>R2</strong> from the sidebar.</li>
+      <li>Click <strong>Create Bucket</strong>.</li>
+      <li>Give it a unique name (e.g., <code>johnrak-backups</code>) and click <strong>Create Bucket</strong>.</li>
+      <li>Go to the <strong>Settings</strong> tab of your new bucket.</li>
+      <li>Copy the <strong>S3 API</strong> URL. It looks like:<br><code>https://<ACCOUNT_ID>.r2.cloudflarestorage.com/johnrak-backups</code></li>
+      <li><strong>Important:</strong> Remove the bucket name from the end. Your <strong>Endpoint URL</strong> is just:<br><code>https://<ACCOUNT_ID>.r2.cloudflarestorage.com</code></li>
     </ol>
 
-    <h2>Create IAM User & Keys</h2>
+    <h2>2. Create API Tokens</h2>
     <ol>
-      <li>AWS Console → IAM → Users → Add user</li>
-      <li>Access type: “Access key - Programmatic access”</li>
-      <li>Attach an inline policy restricted to your bucket and prefix (e.g., <code>backups/*</code>)</li>
-      <li>Create the access key; copy Access key ID and Secret access key immediately</li>
+      <li>Go back to the main R2 page.</li>
+      <li>Click <strong>Manage R2 API Tokens</strong> on the right side.</li>
+      <li>Click <strong>Create API Token</strong>.</li>
+      <li>Select <strong>Admin Read & Write</strong> permissions (or Object Read & Write).</li>
+      <li>Set "Apply to" to <strong>All buckets</strong> or specific bucket.</li>
+      <li>Click <strong>Create API Token</strong>.</li>
+      <li>Copy the <strong>Access Key ID</strong> and <strong>Secret Access Key</strong> immediately. You won't see them again!</li>
     </ol>
 
-    <h2>Least-Privilege Policy Example</h2>
-    <p>Replace <code>YOUR_BUCKET</code> and prefix if needed.</p>
-    <pre><code>{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::YOUR_BUCKET"],
-      "Condition": { "StringLike": { "s3:prefix": ["backups/*"] } }
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject"],
-      "Resource": ["arn:aws:s3:::YOUR_BUCKET/backups/*"]
-    }
-  ]
-}</code></pre>
-
-    <h2>Configure In Admin</h2>
+    <h2>3. Configure Admin Panel</h2>
     <ol>
-      <li>Go to Security → Backup</li>
-      <li>Enable auto backup</li>
-      <li>Fill S3 Region, S3 Bucket, S3 Access Key, S3 Secret, Path Prefix <code>backups</code></li>
-      <li>Leave S3 Endpoint empty for AWS</li>
-      <li>Save, then click “Backup now” to test</li>
+      <li>Go to your Admin Dashboard → <strong>System</strong> → <strong>Backups</strong>.</li>
+      <li>Select Provider: <strong>Cloudflare R2</strong>.</li>
+      <li>Bucket Name: Enter the name from Step 1 (e.g., <code>johnrak-backups</code>).</li>
+      <li>Endpoint URL: Paste the URL from Step 1 (without bucket name).</li>
+      <li>Region: Leave as <code>auto</code>.</li>
+      <li>Access Key ID & Secret Key: Paste from Step 2.</li>
+      <li>Click <strong>Save Configuration</strong>.</li>
     </ol>
 
-    <h2>Scheduler</h2>
-    <p>Ensure Laravel scheduler runs via cron:</p>
-    <pre><code>* * * * * docker exec johnrak-admin-backend php artisan schedule:run &gt;&gt; /dev/null 2&gt;&1</code></pre>
+    <h2>4. Test & Enable</h2>
+    <ol>
+      <li>Click <strong>Run Manual Backup</strong> to verify credentials.</li>
+      <li>If successful, toggle <strong>Enable Automated Backups</strong> and save again.</li>
+      <li>Your database will now be backed up daily!</li>
+    </ol>
 
     <h2>Notes</h2>
     <ul>
-      <li>Keep bucket public access blocked</li>
-      <li>Rotate IAM keys periodically</li>
-      <li>If cloud isn’t configured, backups save locally under <code>storage/app/backups/</code></li>
+      <li>R2 has no egress fees, making it perfect for backups!</li>
+      <li>Ensure your Laravel scheduler/cron is running for automation to work.</li>
     </ul>
   </div>
 </body>

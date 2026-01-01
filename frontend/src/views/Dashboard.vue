@@ -1,44 +1,43 @@
 <template>
   <div class="space-y-6">
+    <!-- Loading State -->
     <div
       v-if="loading"
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
     >
-      <Skeleton className="h-48 w-full" />
-      <Skeleton className="h-48 w-full" />
-      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full" />
     </div>
 
-    <div v-else-if="activeWidgets.length === 0" class="text-center py-12">
+    <!-- Empty State -->
+    <div
+      v-else-if="activeWidgets.length === 0"
+      class="text-center py-12 border border-dashed border-border rounded-xl"
+    >
       <div class="text-4xl mb-4">📭</div>
-      <h3 class="text-lg font-medium">Dashboard is empty</h3>
+      <h3 class="text-lg font-medium">Mission Control Empty</h3>
       <p class="text-muted-foreground max-w-sm mx-auto mt-2">
-        No active widgets found. Please run the database seeder to initialize
-        the dashboard.
+        No active widgets found.
       </p>
-      <div
-        class="mt-4 p-4 bg-muted/50 rounded-lg font-mono text-xs inline-block text-left"
-      >
-        php artisan migrate<br />
-        php artisan db:seed --class=DashboardWidgetSeeder
-      </div>
     </div>
 
+    <!-- Dashboard Grid -->
     <div
       v-else
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-stretch"
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 items-start"
     >
-      <div
-        v-for="widget in activeWidgets"
-        :key="widget.id"
-        :class="getColSpan(widget.width)"
-        class="h-full"
-      >
+      <div v-for="widget in activeWidgets" :key="widget.id" class="h-full">
         <component
-          :is="resolveComponent(widget.component_name)"
-          :data="getWidgetData(widget.component_name)"
+          :is="resolveComponent(widget.component)"
+          :data="getWidgetData(widget.component)"
         />
       </div>
+    </div>
+
+    <!-- Database Size Indicator (Extra) -->
+    <div v-if="dbSize" class="text-xs text-muted-foreground text-right mt-4">
+      Database Size: {{ dbSize }}
     </div>
   </div>
 </template>
@@ -47,19 +46,22 @@
 import { onMounted, ref, computed } from "vue";
 import { api } from "../lib/api";
 import Skeleton from "../components/ui/Skeleton.vue";
-import ServerHealthWidget from "../components/widgets/ServerHealthWidget.vue";
-import AiQuickActionWidget from "../components/widgets/AiQuickActionWidget.vue";
-import BackupStatusWidget from "../components/widgets/BackupStatusWidget.vue";
+
+// Import Widgets
+import WidgetServerHealth from "../components/widgets/WidgetServerHealth.vue";
+import WidgetBackupStatus from "../components/widgets/WidgetBackupStatus.vue";
+import WidgetQuickAi from "../components/widgets/WidgetQuickAi.vue";
 
 const loading = ref(true);
 const widgets = ref([]);
-const systemHealth = ref({});
-const backupStatus = ref({});
+const serverData = ref({});
+const backupData = ref({});
+const dbSize = ref(null);
 
 const componentMap = {
-  ServerHealthWidget,
-  AiQuickActionWidget,
-  BackupStatusWidget,
+  WidgetServerHealth,
+  WidgetBackupStatus,
+  WidgetQuickAi,
 };
 
 const activeWidgets = computed(() => {
@@ -70,32 +72,22 @@ function resolveComponent(name) {
   return componentMap[name] || null;
 }
 
-function getColSpan(width) {
-  // Map 1-4 to tailwind classes
-  const map = {
-    1: "col-span-1",
-    2: "col-span-1 md:col-span-2",
-    3: "col-span-1 md:col-span-3",
-    4: "col-span-1 md:col-span-4",
-  };
-  return map[width] || "col-span-1";
-}
-
 function getWidgetData(name) {
-  if (name === "ServerHealthWidget") return systemHealth.value;
-  if (name === "BackupStatusWidget") return backupStatus.value;
+  if (name === "WidgetServerHealth") return serverData.value;
+  if (name === "WidgetBackupStatus") return backupData.value;
   return {};
 }
 
 async function load() {
   loading.value = true;
   try {
-    const res = await api().get("/api/dashboard/summary");
+    const res = await api().get("/api/dashboard");
     widgets.value = res.data.widgets || [];
-    systemHealth.value = res.data.system_health || {};
-    backupStatus.value = res.data.backup_status || {};
+    serverData.value = res.data.data.server || {};
+    backupData.value = res.data.data.backup || {};
+    dbSize.value = res.data.data.database_size;
   } catch (e) {
-    console.error(e);
+    console.error("Dashboard load error", e);
   } finally {
     loading.value = false;
   }

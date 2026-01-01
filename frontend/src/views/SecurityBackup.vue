@@ -2,205 +2,229 @@
   <div class="space-y-6">
     <Card>
       <template #header>
-        <div class="flex items-start justify-between">
+        <div class="flex items-center justify-between">
           <div>
-            <div class="text-lg font-semibold">Database Backup</div>
+            <div class="text-lg font-semibold">Backup Configuration</div>
             <div class="text-sm text-muted-foreground">
-              Configure S3-compatible storage and run backups. When enabled,
-              backups run daily at 12:00 AM.
+              Configure Cloudflare R2 storage for automated database backups.
             </div>
           </div>
-          <button
-            type="button"
-            class="rounded-md text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            title="How to get AWS S3 info"
-            @click="help.open = true"
-          >
-            ⓘ
-          </button>
+          <div class="flex gap-2">
+            <span
+              v-if="isConfigured"
+              class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium self-center"
+              >Configured</span
+            >
+            <span
+              v-else
+              class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium self-center"
+              >Not Configured</span
+            >
+            <span
+              v-if="form.enabled"
+              class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium self-center"
+              >Active</span
+            >
+            <span
+              v-else
+              class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium self-center"
+              >Disabled</span
+            >
+          </div>
         </div>
       </template>
 
-      <div class="space-y-4">
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <div class="text-sm font-medium">Enable auto backup</div>
-            <div class="text-xs text-muted-foreground">
-              Runs every day at 12:00 AM.
-            </div>
-          </div>
-          <Switch v-model="form.enabled" />
+      <div class="space-y-6">
+        <!-- Main Toggle -->
+        <div class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="enabled"
+            v-model="form.enabled"
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <Label for="enabled" class="font-medium"
+            >Enable Automated Backups</Label
+          >
         </div>
 
-        <div class="grid gap-3 md:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div class="space-y-2">
-            <Label>S3 Region</Label>
-            <Input v-model="form.s3_region" placeholder="us-east-1" />
+            <Label>Provider</Label>
+            <select
+              v-model="form.provider"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="r2">Cloudflare R2</option>
+            </select>
           </div>
+
           <div class="space-y-2">
-            <Label>S3 Bucket</Label>
+            <Label>Bucket Name</Label>
             <Input v-model="form.s3_bucket" placeholder="my-backups" />
           </div>
+
           <div class="space-y-2">
-            <Label>S3 Access Key</Label>
-            <Input v-model="form.s3_access_key" placeholder="AKIA..." />
-          </div>
-          <div class="space-y-2">
-            <Label>S3 Secret</Label>
-            <Input
-              type="password"
-              v-model="form.s3_secret"
-              placeholder="********"
-            />
-          </div>
-          <div class="space-y-2">
-            <Label>S3 Endpoint (optional)</Label>
+            <Label>Endpoint URL</Label>
             <Input
               v-model="form.s3_endpoint"
-              placeholder="https://provider-endpoint"
+              placeholder="https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
+            />
+            <div class="text-xs text-muted-foreground">
+              Required for R2. Found in Cloudflare Dashboard > R2 > Overview.
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label>Region</Label>
+            <Input v-model="form.s3_region" placeholder="auto" />
+            <div class="text-xs text-muted-foreground">
+              Use "auto" for Cloudflare R2.
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label>Access Key ID</Label>
+            <Input
+              v-model="form.s3_access_key"
+              placeholder="Enter Access Key ID"
             />
           </div>
+
           <div class="space-y-2">
-            <Label>Path Prefix</Label>
-            <Input v-model="form.s3_path_prefix" placeholder="backups" />
+            <Label>Secret Access Key</Label>
+            <Input
+              v-model="form.s3_secret"
+              type="password"
+              placeholder="Enter Secret Access Key"
+            />
+          </div>
+
+          <div class="space-y-2 md:col-span-2">
+            <Label>Path Prefix (Optional)</Label>
+            <Input
+              v-model="form.s3_path_prefix"
+              placeholder="backups/johnrak"
+            />
           </div>
         </div>
 
-        <div class="flex gap-2">
-          <Button @click="save" :disabled="saving">{{
-            saving ? "Saving..." : "Save"
-          }}</Button>
-          <Button variant="ghost" @click="run" :disabled="running">{{
-            running ? "Backing up..." : "Backup now"
-          }}</Button>
-        </div>
-        <div v-if="message" class="text-xs text-muted-foreground">
-          {{ message }}
+        <div class="flex justify-end gap-3 pt-4 border-t border-border">
+          <Button variant="ghost" @click="runBackup" :disabled="running">
+            {{ running ? "Backing up..." : "Run Manual Backup" }}
+          </Button>
+          <Button @click="save" :disabled="saving">
+            {{ saving ? "Saving..." : "Save Configuration" }}
+          </Button>
         </div>
       </div>
     </Card>
 
-    <!-- help modal -->
     <div
-      v-if="help.open"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm"
+      class="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800"
     >
-      <div
-        class="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg"
-      >
-        <div class="flex items-center justify-between">
-          <div class="font-semibold">How to get AWS S3 info</div>
-          <button
-            type="button"
-            class="rounded-md text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            @click="help.open = false"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="mt-3 space-y-3 text-sm">
-          <div>
-            <div class="font-medium">You need</div>
-            <div class="text-muted-foreground">
-              s3_region, s3_bucket, s3_access_key, s3_secret
-            </div>
-          </div>
-          <ol class="list-decimal pl-4 space-y-1">
-            <li>
-              AWS → S3 → Buckets → Create or select your bucket; copy Region and
-              Bucket name
-            </li>
-            <li>AWS → IAM → Users → Create user (programmatic access)</li>
-            <li>
-              Attach a policy limited to your bucket and prefix (e.g. backups/*)
-            </li>
-            <li>Create access key; copy Access key ID and Secret access key</li>
-            <li>
-              Fill the form here and Save, then click “Backup now” to test
-            </li>
-          </ol>
-          <div>
-            <a
-              class="text-primary underline hover:no-underline"
-              href="/aws-s3-setup.html"
-              target="_blank"
-              rel="noreferrer"
-              >Open full guide</a
-            >
-          </div>
-        </div>
-      </div>
+      <h4 class="font-semibold mb-2">How to get Cloudflare R2 Credentials:</h4>
+      <ol class="list-decimal list-inside space-y-1 ml-1 mb-4">
+        <li>Log in to Cloudflare Dashboard and go to <strong>R2</strong>.</li>
+        <li>Click <strong>"Manage R2 API Tokens"</strong> (top right).</li>
+        <li>Click <strong>"Create API Token"</strong>.</li>
+        <li>Select <strong>"Admin Read & Write"</strong> permission.</li>
+        <li>
+          Copy the <strong>Access Key ID</strong> and
+          <strong>Secret Access Key</strong>.
+        </li>
+        <li>
+          Copy the <strong>Endpoint</strong> from the bucket details page
+          (remove bucket name from URL if present).
+        </li>
+      </ol>
+      <a href="/aws-s3-setup.html" target="_blank" class="text-blue-700 underline font-medium hover:text-blue-900">
+        Open full setup guide &rarr;
+      </a>
     </div>
+
+    <Toast
+      :show="toast.show"
+      :title="toast.title"
+      :message="toast.message"
+      @close="toast.show = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { onMounted, ref, reactive } from "vue";
 import { api } from "../lib/api";
 import Card from "../components/ui/Card.vue";
 import Button from "../components/ui/Button.vue";
 import Input from "../components/ui/Input.vue";
 import Label from "../components/ui/Label.vue";
-import Switch from "../components/ui/Switch.vue";
+import Toast from "../components/ui/Toast.vue";
 
-const form = ref({
-  enabled: false,
-  s3_region: "",
-  s3_bucket: "",
-  s3_access_key: "",
-  s3_secret: "",
-  s3_endpoint: "",
-  s3_path_prefix: "backups",
-});
+const loading = ref(false);
 const saving = ref(false);
 const running = ref(false);
-const message = ref("");
-const help = ref({ open: false });
+const toast = reactive({ show: false, title: "", message: "" });
 
-onMounted(async () => {
+const form = reactive({
+  enabled: false,
+  provider: "r2",
+  s3_bucket: "",
+  s3_endpoint: "",
+  s3_region: "auto",
+  s3_access_key: "",
+  s3_secret: "",
+  s3_path_prefix: "",
+});
+
+async function load() {
+  loading.value = true;
   try {
     const res = await api().get("/api/security/backup/config");
-    const cfg = res.data;
-    form.value.enabled = !!cfg.enabled;
-    form.value.s3_region = cfg.s3?.region || "";
-    form.value.s3_bucket = cfg.s3?.bucket || "";
-    form.value.s3_endpoint = cfg.s3?.endpoint || "";
-    form.value.s3_path_prefix = cfg.s3?.path_prefix || "backups";
-  } catch {}
-});
+    if (res.data) {
+      Object.assign(form, res.data);
+      if (!form.provider) form.provider = "r2";
+      if (!form.s3_region) form.s3_region = "auto";
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+}
 
 async function save() {
   saving.value = true;
-  message.value = "";
   try {
-    await api().post("/api/security/backup/config", form.value);
-    message.value = "Saved";
+    await api().post("/api/security/backup/config", form);
+    toast.title = "Saved";
+    toast.message = "Backup configuration updated.";
+    toast.show = true;
   } catch (e) {
-    message.value = e?.response?.data?.message || "Save failed";
+    toast.title = "Error";
+    toast.message = "Failed to save configuration.";
+    toast.show = true;
   } finally {
     saving.value = false;
   }
 }
 
-async function run() {
+async function runBackup() {
+  if (!confirm("Run a manual backup now? This may take a few seconds.")) return;
   running.value = true;
-  message.value = "";
   try {
-    const res = await api().post("/api/security/backup/run");
-    const uploaded = res.data?.uploaded_key;
-    const local = res.data?.local_path;
-    message.value = uploaded
-      ? "Uploaded: " + uploaded
-      : local
-      ? "Saved locally: " + local
-      : "Done";
+    await api().post("/api/security/backup/run");
+    toast.title = "Success";
+    toast.message = "Backup initiated successfully.";
+    toast.show = true;
   } catch (e) {
-    message.value = e?.response?.data?.message || "Backup failed";
+    toast.title = "Error";
+    toast.message = e.response?.data?.message || "Backup failed.";
+    toast.show = true;
   } finally {
     running.value = false;
   }
 }
-</script>
 
-<style scoped></style>
+onMounted(load);
+</script>

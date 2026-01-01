@@ -29,7 +29,7 @@ class BackupController extends Controller
     {
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
-            'provider' => ['nullable', 'in:s3'],
+            'provider' => ['nullable', 'in:s3,r2'],
             's3_access_key' => ['nullable', 'string'],
             's3_secret' => ['nullable', 'string'],
             's3_region' => ['nullable', 'string'],
@@ -39,7 +39,7 @@ class BackupController extends Controller
         ]);
 
         $cfg = BackupConfig::firstOrCreate(['user_id' => $request->user()->id]);
-        foreach (['enabled','provider','s3_region','s3_bucket','s3_endpoint','s3_path_prefix'] as $k) {
+        foreach (['enabled', 'provider', 's3_region', 's3_bucket', 's3_endpoint', 's3_path_prefix'] as $k) {
             if (array_key_exists($k, $data)) $cfg->$k = $data[$k];
         }
         if (!empty($data['s3_access_key'])) $cfg->s3_access_key = $data['s3_access_key'];

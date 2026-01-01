@@ -25,7 +25,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
-    Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('portfolio')->group(function () {

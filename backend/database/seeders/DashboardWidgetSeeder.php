@@ -11,31 +11,28 @@ class DashboardWidgetSeeder extends Seeder
     {
         $widgets = [
             [
-                'title' => 'Server Health',
-                'component_name' => 'ServerHealthWidget',
-                'width' => 2,
-                'sort_order' => 1,
+                'name' => 'Server Pulse',
+                'component' => 'WidgetServerHealth',
+                'position' => 1,
                 'is_active' => true,
             ],
             [
-                'title' => 'Backup Status',
-                'component_name' => 'BackupStatusWidget',
-                'width' => 1,
-                'sort_order' => 2,
+                'name' => 'Backup Status',
+                'component' => 'WidgetBackupStatus',
+                'position' => 2,
                 'is_active' => true,
             ],
             [
-                'title' => 'AI Quick Action',
-                'component_name' => 'AiQuickActionWidget',
-                'width' => 1,
-                'sort_order' => 3,
+                'name' => 'Quick AI',
+                'component' => 'WidgetQuickAi',
+                'position' => 3,
                 'is_active' => true,
             ],
         ];
 
         foreach ($widgets as $w) {
             DashboardWidget::firstOrCreate(
-                ['component_name' => $w['component_name']],
+                ['component' => $w['component']],
                 $w
             );
         }

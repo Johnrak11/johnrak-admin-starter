@@ -10,10 +10,9 @@ return new class extends Migration
     {
         Schema::create('dashboard_widgets', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->string('component_name'); // e.g., 'ServerHealthWidget'
-            $table->integer('width')->default(1); // Grid column span (1-4)
-            $table->integer('sort_order')->default(0);
+            $table->string('name');
+            $table->string('component'); // e.g., 'WidgetServerHealth'
+            $table->integer('position')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

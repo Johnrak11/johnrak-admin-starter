@@ -9,14 +9,44 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function summary(Request $request)
+    public function index(Request $request)
     {
         // 1. Fetch Active Widgets
         $widgets = DashboardWidget::where('is_active', true)
-            ->orderBy('sort_order', 'asc')
+            ->orderBy('position', 'asc')
             ->get();
 
-        // 2. System Health Logic
+        // 2. Health & Backup Logic
+        $serverHealth = $this->checkServerHealth();
+        $backupStatus = $this->checkBackupStatus($request->user()->id);
+
+        // 3. Database Size (Extra touch for "Unified Dashboard")
+        $dbSize = 'Unknown';
+        try {
+            // MySQL specific
+            $res = DB::select('SELECT table_schema "name", ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) "size" FROM information_schema.TABLES GROUP BY table_schema');
+            foreach ($res as $row) {
+                if ($row->name === env('DB_DATABASE', 'laravel')) {
+                    $dbSize = $row->size . 'MB';
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+        }
+
+        // 4. Return Structure
+        return response()->json([
+            'widgets' => $widgets,
+            'data' => [
+                'server' => $serverHealth,
+                'backup' => $backupStatus,
+                'database_size' => $dbSize,
+            ],
+        ]);
+    }
+
+    private function checkServerHealth()
+    {
         $diskFree = disk_free_space('/');
         $diskTotal = disk_total_space('/');
         $diskUsagePct = 0;
@@ -27,63 +57,84 @@ class DashboardController extends Controller
         // RAM Usage
         $ramUsagePct = 0;
         try {
-            if (file_exists('/proc/meminfo')) {
-                // Linux / Docker (Reads kernel info directly, no shell_exec needed)
-                $memInfo = file_get_contents('/proc/meminfo');
-                $values = [];
-                foreach (explode("\n", $memInfo) as $line) {
-                    if (preg_match('/^(\w+):\s+(\d+)/', $line, $matches)) {
-                        $values[$matches[1]] = (int)$matches[2];
+            // Try standard 'free -m' (Linux)
+            $freeOutput = shell_exec('free -m');
+            if ($freeOutput) {
+                // Parse: Mem: 7976 2345 ...
+                // Matches: total, used
+                if (preg_match('/Mem:\s+(\d+)\s+(\d+)/', $freeOutput, $matches)) {
+                    $total = $matches[1];
+                    $used = $matches[2];
+                    if ($total > 0) {
+                        $ramUsagePct = round(($used / $total) * 100, 1);
                     }
                 }
-
-                if (isset($values['MemTotal']) && isset($values['MemAvailable'])) {
-                    // Accurate for modern Linux kernels (MemAvailable estimates usable memory)
-                    $used = $values['MemTotal'] - $values['MemAvailable'];
-                    $ramUsagePct = round(($used / $values['MemTotal']) * 100, 1);
-                } elseif (isset($values['MemTotal']) && isset($values['MemFree'])) {
-                    // Fallback for older kernels
-                    $used = $values['MemTotal'] - $values['MemFree'];
-                    $ramUsagePct = round(($used / $values['MemTotal']) * 100, 1);
-                }
             } else {
-                // Fallback: memory_get_usage() as a % of a hardcoded limit (e.g. 512MB)
-                // This is just to show *something* active if we can't read OS stats
-                $currentScriptMem = memory_get_usage(true);
-                $limit = 512 * 1024 * 1024; // Assume 512MB container limit if unknown
-                $ramUsagePct = round(($currentScriptMem / $limit) * 100, 2);
+                // Fallback for macOS (vm_stat)
+                $vmStat = shell_exec('vm_stat');
+                if ($vmStat) {
+                    // Extract page size (usually 4096 bytes)
+                    $pageSize = 4096; // Default assumption
+
+                    // Parse pages free, active, inactive, wired
+                    preg_match('/Pages free:\s+(\d+)\./', $vmStat, $freeMatches);
+                    preg_match('/Pages active:\s+(\d+)\./', $vmStat, $activeMatches);
+                    preg_match('/Pages inactive:\s+(\d+)\./', $vmStat, $inactiveMatches);
+                    preg_match('/Pages wired down:\s+(\d+)\./', $vmStat, $wiredMatches);
+
+                    if (isset($freeMatches[1], $activeMatches[1], $wiredMatches[1])) {
+                        $free = $freeMatches[1] * $pageSize;
+                        $active = $activeMatches[1] * $pageSize;
+                        $inactive = ($inactiveMatches[1] ?? 0) * $pageSize;
+                        $wired = $wiredMatches[1] * $pageSize;
+
+                        $used = $active + $wired; // Active + Wired is a decent proxy for "Used"
+                        $total = $free + $active + $inactive + $wired;
+
+                        if ($total > 0) {
+                            $ramUsagePct = round(($used / $total) * 100, 1);
+                        }
+                    }
+                }
             }
-        } catch (\Throwable $e) {
-            // Keep 0 on error
+        } catch (\Exception $e) {
+            $ramUsagePct = 0;
         }
 
-        // 3. Backup Status
-        $lastBackup = Backup::where('user_id', $request->user()->id)
+        // CPU Load (sys_getloadavg)
+        $cpuLoad = 0;
+        $load = sys_getloadavg();
+        if ($load && isset($load[0])) {
+            $cpuLoad = $load[0];
+        }
+
+        return [
+            'disk_percent' => $diskUsagePct,
+            'ram_percent' => $ramUsagePct,
+            'cpu_load' => $cpuLoad,
+        ];
+    }
+
+    private function checkBackupStatus($userId)
+    {
+        $lastBackup = Backup::where('user_id', $userId)
             ->where('is_successful', true)
             ->latest()
             ->first();
-        
-        $backupStatus = [
-            'ran_today' => false,
-            'last_run' => null,
-            'disk' => 'N/A'
-        ];
+
+        $status = 'warning';
+        $lastRun = 'Never';
 
         if ($lastBackup) {
-            $backupStatus['last_run'] = $lastBackup->created_at->diffForHumans();
-            $backupStatus['disk'] = $lastBackup->disk;
-            if ($lastBackup->created_at->isToday()) {
-                $backupStatus['ran_today'] = true;
+            $lastRun = $lastBackup->created_at->diffForHumans();
+            if ($lastBackup->created_at->gt(now()->subHours(24))) {
+                $status = 'safe';
             }
         }
 
-        return response()->json([
-            'widgets' => $widgets,
-            'system_health' => [
-                'disk_usage_pct' => $diskUsagePct,
-                'ram_usage_pct' => $ramUsagePct,
-            ],
-            'backup_status' => $backupStatus,
-        ]);
+        return [
+            'status' => $status,
+            'last_run' => $lastRun,
+        ];
     }
 }
