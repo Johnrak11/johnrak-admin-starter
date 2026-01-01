@@ -59,6 +59,8 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('ai')->
     Route::post('/reindex', [AiController::class, 'reindex'])->middleware('throttle:login');
     Route::get('/search', [AiController::class, 'search'])->middleware('throttle:ai-search');
     Route::post('/chat', [AiController::class, 'chat'])->middleware('throttle:ai-search');
+    Route::post('/case-study', [AiController::class, 'generateCaseStudy'])->middleware('throttle:ai-search');
+    Route::post('/bio', [AiController::class, 'generateBio'])->middleware('throttle:ai-search');
 });
 
 Route::prefix('client')->group(function () {

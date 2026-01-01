@@ -300,4 +300,140 @@ class AiController extends Controller
             'assistant' => $answer,
         ]);
     }
+
+    public function generateCaseStudy(Request $request)
+    {
+        $this->configureGemini();
+        $request->validate([
+            'notes' => 'nullable|string',
+            'repo_url' => 'nullable|url',
+            'type' => 'nullable|string|in:project,education,experience',
+        ]);
+
+        $notes = $request->input('notes');
+        $repoUrl = $request->input('repo_url');
+        $type = $request->input('type', 'project');
+
+        if (!$notes && !$repoUrl) {
+            return response()->json(['error' => 'Please provide manual notes or a GitHub URL.'], 422);
+        }
+
+        $context = "";
+
+        // 1. Fetch README from GitHub if URL provided
+        if ($repoUrl) {
+            try {
+                // Parse "https://github.com/user/repo" -> "user/repo"
+                $path = parse_url($repoUrl, PHP_URL_PATH);
+                $path = trim($path, '/');
+
+                // Try main then master
+                $readme = @file_get_contents("https://raw.githubusercontent.com/{$path}/main/README.md");
+                if (!$readme) {
+                    $readme = @file_get_contents("https://raw.githubusercontent.com/{$path}/master/README.md");
+                }
+
+                if ($readme) {
+                    $context .= "GitHub README Content:\n" . substr($readme, 0, 5000) . "\n\n"; // Limit size
+                }
+            } catch (\Exception $e) {
+                // Ignore fetch errors, just use notes
+            }
+        }
+
+        // 2. Append Manual Notes
+        if ($notes) {
+            $context .= "Manual Notes:\n" . $notes . "\n";
+        }
+
+        // 3. Construct Prompt based on Type
+        if ($type === 'education') {
+            $prompt = "You are a Professional Academic Copywriter. Take the following education notes:\n\n" .
+                "[" . $context . "]\n\n" .
+                "Generate a professional description for a CV/Portfolio focusing on:\n" .
+                "- Key coursework and technical skills learned.\n" .
+                "- Thesis or capstone projects (if mentioned).\n" .
+                "- Academic achievements, GPA, or honors.\n\n" .
+                "Format: Markdown bullet points. Tone: Scholarly yet practical.";
+        } elseif ($type === 'experience') {
+            $prompt = "You are a Senior Career Coach. Take the following job experience notes:\n\n" .
+                "[" . $context . "]\n\n" .
+                "Generate a job description in Markdown format using the STAR method:\n" .
+                "- Situation/Task: Context of the role.\n" .
+                "- Action: Key responsibilities and technologies used.\n" .
+                "- Result: Quantifiable achievements.\n\n" .
+                "Tone: Executive and results-driven.";
+        } else {
+            // Project (Default)
+            $prompt = "You are a Professional Technical Copywriter. Take the following project notes and/or README content:\n\n" .
+                "[" . $context . "]\n\n" .
+                "Generate a case study in Markdown format using the STAR method:\n" .
+                "- Situation: The high-level context.\n" .
+                "- Task: The specific challenge or bug.\n" .
+                "- Action: The technical steps and tools used.\n" .
+                "- Result: The quantifiable outcome (e.g., 50% faster, zero bugs).\n\n" .
+                "Tone: Results-oriented and senior-level.";
+        }
+
+        // 4. Call Gemini
+        try {
+            $response = Gemini::generativeModel('gemini-flash-latest')->generateContent($prompt);
+            return response()->json(['markdown' => $response->text()]);
+        } catch (\Exception $e) {
+            Log::error("Case Study Generation Error: " . $e->getMessage());
+            return response()->json(['error' => 'AI generation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function generateBio(Request $request)
+    {
+        $this->configureGemini();
+
+        // 1. Gather Full Context
+        $projects = PortfolioProject::all(['name', 'description', 'tech_stack'])->toArray();
+        $skills = PortfolioSkill::all(['name', 'level'])->toArray();
+        $experiences = PortfolioExperience::all(['company', 'title', 'start_date', 'end_date', 'description'])->toArray();
+        $educations = \App\Models\PortfolioEducation::all(['school', 'degree', 'field_of_study', 'start_date', 'end_date', 'description'])->toArray();
+        $profile = PortfolioProfile::first();
+
+        $contextData = [
+            'existing_summary' => $profile->summary ?? '',
+            'existing_about_me' => $profile->about_me ?? '',
+            'projects' => $projects,
+            'skills' => $skills,
+            'experience' => $experiences,
+            'education' => $educations,
+        ];
+
+        // 2. Construct Prompt
+        $prompt = "You are a Personal Branding Expert. I need you to write a professional 'Summary' and 'About Me' for my portfolio based on my actual data below.\n\n" .
+            "DATA SOURCE:\n" . json_encode($contextData) . "\n\n" .
+            "INSTRUCTIONS:\n" .
+            "1. Analyze my skills, projects, and experience to find common themes (e.g., 'Full Stack Expert', 'System Architect').\n" .
+            "2. Write a 'Summary' (max 200 chars): A punchy headline bio for the hero section.\n" .
+            "3. Write an 'About Me' (max 300 words): A compelling narrative connecting my background, key achievements, and technical philosophy.\n" .
+            "4. Return ONLY valid JSON in this format: { \"summary\": \"...\", \"about_me\": \"...\" }";
+
+        // 3. Call Gemini
+        try {
+            $response = Gemini::generativeModel('gemini-flash-latest')->generateContent($prompt);
+            $text = $response->text();
+
+            // Cleanup JSON: Extract the first JSON object found
+            if (preg_match('/\{[\s\S]*\}/', $text, $matches)) {
+                $text = $matches[0];
+            }
+
+            $data = json_decode($text, true);
+
+            if (!$data) {
+                return response()->json(['error' => 'AI failed to generate valid JSON.'], 500);
+            }
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error("Bio Generation Error: " . $e->getMessage());
+            return response()->json(['error' => 'AI generation failed: ' . $e->getMessage()], 500);
+        }
+    }
 }

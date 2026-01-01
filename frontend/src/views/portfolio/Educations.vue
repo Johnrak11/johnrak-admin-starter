@@ -26,7 +26,7 @@
             <div class="flex-1">
               <div class="text-sm font-medium text-foreground">{{ headline(it) }}</div>
               <div class="mt-1 text-sm text-muted-foreground">{{ subtitle(it) }}</div>
-              <div v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ it.description }}</div>
+              <div v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-3">{{ it.description }}</div>
             </div>
             <div class="flex gap-2">
               <Button variant="ghost" @click="openEdit(it)">Edit</Button>
@@ -76,7 +76,17 @@
               <Input v-model="draft.end_date" type="date" placeholder="" />
             </div>
           <div class="md:col-span-2 space-y-2">
-              <Label>Description</Label>
+              <div class="flex items-center justify-between">
+                <Label>Description</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click="openGenerator"
+                  class="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  ✨ Generate Description
+                </Button>
+              </div>
               <textarea
                 v-model="draft.description"
                 class="min-h-[110px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground
@@ -98,6 +108,85 @@
     </div>
 
     <Toast :show="toast.show" :title="toast.title" :message="toast.message" @close="toast.show=false" />
+
+    <!-- Generator Modal -->
+    <div
+      v-if="generator.open"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 p-4 supports-[backdrop-filter]:backdrop-blur-sm"
+    >
+      <div
+        class="w-full max-w-5xl h-[80vh] rounded-2xl border border-border bg-card flex flex-col shadow-2xl"
+      >
+        <div
+          class="flex items-center justify-between border-b border-border p-4"
+        >
+          <div class="font-semibold flex items-center gap-2">
+            <span>✨</span> Education Description Generator
+          </div>
+          <button
+            type="button"
+            class="rounded-md text-muted-foreground transition hover:text-foreground"
+            @click="generator.open = false"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+          <!-- Left: Input -->
+          <div
+            class="w-1/3 border-r border-border p-4 flex flex-col gap-4 bg-muted/10"
+          >
+            <div class="space-y-2 flex-1 flex flex-col">
+              <Label>Manual Notes</Label>
+              <textarea
+                v-model="generator.notes"
+                class="flex-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="List your coursework, achievements, GPA, thesis topic, etc..."
+              ></textarea>
+            </div>
+
+            <Button
+              @click="generate"
+              :disabled="generator.loading"
+              class="w-full"
+            >
+              <span v-if="generator.loading" class="mr-2 animate-spin">⏳</span>
+              {{ generator.loading ? "Generating..." : "Generate Description" }}
+            </Button>
+          </div>
+
+          <!-- Right: Preview -->
+          <div class="w-2/3 p-4 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <Label>Generated Result (Markdown)</Label>
+              <div
+                v-if="generator.result"
+                class="text-xs text-green-600 font-medium"
+              >
+                Ready to review
+              </div>
+            </div>
+
+            <textarea
+              v-model="generator.result"
+              class="flex-1 w-full rounded-lg border border-input bg-background px-4 py-4 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+              placeholder="Your description will appear here..."
+            ></textarea>
+
+            <div class="flex justify-end gap-2">
+              <Button variant="ghost" @click="generator.open = false"
+                >Cancel</Button
+              >
+              <Button @click="applyGeneration" :disabled="!generator.result">
+                Apply to Description
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -126,6 +215,13 @@ const draft = reactive({
   description: '',
   sort_order: 0
 })
+
+const generator = reactive({
+  open: false,
+  loading: false,
+  notes: "",
+  result: "",
+});
 
 const toast = reactive({ show: false, title: 'Saved', message: '' })
 
@@ -160,8 +256,36 @@ function openEdit(it) {
   modal.id = it.id
 }
 
+function openGenerator() {
+  generator.open = true;
+  generator.loading = false;
+  generator.notes = draft.description || "";
+  generator.result = "";
+}
+
+async function generate() {
+  if (!generator.notes) return;
+  generator.loading = true;
+  try {
+    const res = await api().post("/api/ai/case-study", {
+      notes: generator.notes,
+      type: 'education'
+    });
+    generator.result = res.data?.markdown || "";
+  } catch (e) {
+    alert(e?.response?.data?.error || "Generation failed");
+  } finally {
+    generator.loading = false;
+  }
+}
+
+function applyGeneration() {
+  draft.description = generator.result;
+  generator.open = false;
+}
+
 function close() {
-  modal.open = false
+  modal.open = false;
 }
 
 function headline(it) {
