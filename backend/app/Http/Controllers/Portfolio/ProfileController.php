@@ -23,6 +23,7 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'headline' => ['nullable', 'string', 'max:200'],
             'summary' => ['nullable', 'string', 'max:5000'],
+            'about_me' => ['nullable', 'string', 'max:10000'],
             'location' => ['nullable', 'string', 'max:200'],
             'email_public' => ['nullable', 'email', 'max:255'],
             'phone_public' => ['nullable', 'string', 'max:50'],

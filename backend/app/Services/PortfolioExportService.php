@@ -30,6 +30,7 @@ class PortfolioExportService
                 'headline' => $profile?->headline ?? '',
                 'location' => $profile?->location ?? '',
                 'summary' => $profile?->summary ?? '',
+                'aboutMe' => $profile?->about_me ?? '',
                 'avatarUrl' => $profile?->avatar_url ?? null,
                 'email' => $profile?->email_public ?? null,
                 'links' => $basicsLinks,
