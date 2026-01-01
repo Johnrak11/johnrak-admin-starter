@@ -54,42 +54,46 @@ class DashboardController extends Controller
             $diskUsagePct = round((($diskTotal - $diskFree) / $diskTotal) * 100, 1);
         }
 
-        // RAM Usage
+        // RAM Usage: Prefer reading /proc/meminfo on Linux/Docker (most reliable)
         $ramUsagePct = 0;
         try {
-            // Try standard 'free -m' (Linux)
-            $freeOutput = shell_exec('free -m');
-            if ($freeOutput) {
-                // Parse: Mem: 7976 2345 ...
-                // Matches: total, used
-                if (preg_match('/Mem:\s+(\d+)\s+(\d+)/', $freeOutput, $matches)) {
+            if (@is_readable('/proc/meminfo')) {
+                $memInfo = file_get_contents('/proc/meminfo');
+                $total = 0;
+                $available = 0;
+
+                if (preg_match('/MemTotal:\s+(\d+)\s+kB/', $memInfo, $matches)) {
                     $total = $matches[1];
-                    $used = $matches[2];
-                    if ($total > 0) {
-                        $ramUsagePct = round(($used / $total) * 100, 1);
-                    }
+                }
+                if (preg_match('/MemAvailable:\s+(\d+)\s+kB/', $memInfo, $matches)) {
+                    $available = $matches[1];
+                }
+
+                // Fallback if MemAvailable is missing (older kernels)
+                if ($available == 0 && preg_match('/MemFree:\s+(\d+)\s+kB/', $memInfo, $freeMatches)) {
+                    $available = $freeMatches[1]; // Crude approximation
+                }
+
+                if ($total > 0) {
+                    $used = $total - $available;
+                    $ramUsagePct = round(($used / $total) * 100, 1);
                 }
             } else {
-                // Fallback for macOS (vm_stat)
+                // Fallback for macOS (vm_stat) or systems without /proc
                 $vmStat = shell_exec('vm_stat');
                 if ($vmStat) {
-                    // Extract page size (usually 4096 bytes)
-                    $pageSize = 4096; // Default assumption
-
-                    // Parse pages free, active, inactive, wired
+                    $pageSize = 4096;
                     preg_match('/Pages free:\s+(\d+)\./', $vmStat, $freeMatches);
                     preg_match('/Pages active:\s+(\d+)\./', $vmStat, $activeMatches);
-                    preg_match('/Pages inactive:\s+(\d+)\./', $vmStat, $inactiveMatches);
                     preg_match('/Pages wired down:\s+(\d+)\./', $vmStat, $wiredMatches);
 
                     if (isset($freeMatches[1], $activeMatches[1], $wiredMatches[1])) {
                         $free = $freeMatches[1] * $pageSize;
                         $active = $activeMatches[1] * $pageSize;
-                        $inactive = ($inactiveMatches[1] ?? 0) * $pageSize;
                         $wired = $wiredMatches[1] * $pageSize;
 
-                        $used = $active + $wired; // Active + Wired is a decent proxy for "Used"
-                        $total = $free + $active + $inactive + $wired;
+                        $used = $active + $wired;
+                        $total = $free + $used; // Simplified total
 
                         if ($total > 0) {
                             $ramUsagePct = round(($used / $total) * 100, 1);
@@ -101,11 +105,20 @@ class DashboardController extends Controller
             $ramUsagePct = 0;
         }
 
-        // CPU Load (sys_getloadavg)
+        // CPU Load
         $cpuLoad = 0;
         $load = sys_getloadavg();
         if ($load && isset($load[0])) {
             $cpuLoad = $load[0];
+        } else {
+            // Fallback: Read /proc/loadavg
+            if (@is_readable('/proc/loadavg')) {
+                $content = file_get_contents('/proc/loadavg');
+                $parts = explode(' ', $content);
+                if (isset($parts[0])) {
+                    $cpuLoad = (float) $parts[0];
+                }
+            }
         }
 
         return [
