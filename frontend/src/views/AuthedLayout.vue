@@ -22,24 +22,24 @@
             class="text-muted-foreground hover:text-foreground hover:scale-110 transition-all p-2 rounded-md hover:bg-muted"
             title="AI Chat"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              class="h-7 w-7 sm:h-6 sm:w-6 animate-pulse" 
-            > 
-              <path d="M12 8V4H8" /> 
-              <rect width="16" height="12" x="4" y="8" rx="2" /> 
-              <path d="M2 14h2" /> 
-              <path d="M20 14h2" /> 
-              <path d="M15 13v2" /> 
-              <path d="M9 13v2" /> 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="h-7 w-7 sm:h-6 sm:w-6 animate-pulse"
+            >
+              <path d="M12 8V4H8" />
+              <rect width="16" height="12" x="4" y="8" rx="2" />
+              <path d="M2 14h2" />
+              <path d="M20 14h2" />
+              <path d="M15 13v2" />
+              <path d="M9 13v2" />
             </svg>
           </button>
         </div>
@@ -110,6 +110,10 @@ const route = useRoute();
 
 const navGroups = [
   {
+    label: "Main",
+    items: [{ to: "/", label: "Dashboard" }],
+  },
+  {
     label: "Portfolio",
     items: [
       { to: "/portfolio/profile", label: "Profile" },
@@ -123,9 +127,10 @@ const navGroups = [
     ],
   },
   {
-    label: "Settings",
-    items: [{ to: "/settings", label: "General" }],
+    label: "AI Integration",
+    items: [{ to: "/ai/settings", label: "Gemini Configuration" }],
   },
+
   {
     label: "Security",
     items: [
@@ -134,17 +139,14 @@ const navGroups = [
     ],
   },
   {
-    label: "AI Integration",
-    items: [
-      { to: "/ai/settings", label: "Settings" },
-    ],
+    label: "Settings",
+    items: [{ to: "/settings", label: "General" }],
   },
 ];
-
 const collapsed = reactive({
+  Main: false,
   Portfolio: false,
-  Settings: false,
-  Security: false,
+  System: false,
 });
 function toggle(label) {
   const next = !collapsed[label];
@@ -161,9 +163,7 @@ function ensureActiveGroupOpen() {
   const path = route.path;
   const map = {
     Portfolio: /^\/portfolio\//,
-    Settings: /^\/settings$/,
-    Security: /^\/security(\/|$)/,
-    "AI Integration": /^\/ai\//,
+    System: /^\/(settings|security|ai\/settings)/,
   };
   Object.keys(collapsed).forEach((k) => (collapsed[k] = true));
   for (const [label, re] of Object.entries(map)) {
@@ -178,6 +178,7 @@ onMounted(() => ensureActiveGroupOpen());
 watch(() => [route.path, settings.accordionSidebar], ensureActiveGroupOpen);
 
 const titles = {
+  "/": "Unified Modular Dashboard",
   "/portfolio/profile": "Profile",
   "/portfolio/experiences": "Experiences",
   "/portfolio/educations": "Educations",

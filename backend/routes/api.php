@@ -13,6 +13,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\ClientPortfolioSyncController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\AiController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -21,6 +22,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/login/2fa', [AuthController::class, 'login2fa'])->middleware('throttle:login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+});
+
+Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
+    Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('portfolio')->group(function () {

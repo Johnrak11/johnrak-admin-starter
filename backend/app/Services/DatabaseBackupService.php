@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BackupConfig;
+use App\Models\Backup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
@@ -21,13 +22,25 @@ class DatabaseBackupService
         @mkdir(dirname($tmp), 0775, true);
 
         $this->dumpToFile($tmp);
+        $size = filesize($tmp);
 
         $result = [];
         $hasS3 = ($cfg->s3_bucket && $cfg->s3_access_key && $cfg->s3_secret);
+        
+        $backupRecord = [
+            'user_id' => $userId,
+            'size_bytes' => $size,
+            'is_successful' => true,
+        ];
+
         if ($hasS3) {
             $key = trim($cfg->s3_path_prefix ?: 'backups', '/') . '/' . $filename;
             $this->uploadToS3($cfg, $tmp, $key);
             $result['uploaded_key'] = $key;
+            
+            $backupRecord['disk'] = 's3';
+            $backupRecord['path'] = $key;
+            
             @unlink($tmp);
         } else {
             $destRel = 'backups/' . $filename;
@@ -36,6 +49,17 @@ class DatabaseBackupService
             $destAbs = storage_path('app/' . $destRel);
             @rename($tmp, $destAbs);
             $result['local_path'] = $destRel;
+            
+            $backupRecord['disk'] = 'local';
+            $backupRecord['path'] = $destRel;
+        }
+
+        // Log to database
+        try {
+            Backup::create($backupRecord);
+        } catch (\Exception $e) {
+            // If logging fails, don't fail the backup itself, just log error
+            // Log::error("Failed to log backup: " . $e->getMessage());
         }
 
         return $result;

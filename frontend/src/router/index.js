@@ -3,6 +3,7 @@ import { useAuthStore } from "../stores/auth";
 
 import Login from "../views/Login.vue";
 import AuthedLayout from "../views/AuthedLayout.vue";
+import Dashboard from "../views/Dashboard.vue";
 import Settings from "../views/Settings.vue";
 import Security from "../views/Security.vue";
 import SecurityBackup from "../views/SecurityBackup.vue";
@@ -26,7 +27,7 @@ const router = createRouter({
       path: "/",
       component: AuthedLayout,
       children: [
-        { path: "", redirect: "/portfolio/profile" },
+        { path: "", component: Dashboard },
         { path: "/portfolio/profile", component: Profile },
         { path: "/portfolio/experiences", component: Experiences },
         { path: "/portfolio/educations", component: Educations },
