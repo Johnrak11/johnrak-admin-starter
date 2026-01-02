@@ -12,14 +12,23 @@ class ClientPortfolioSyncController extends Controller
     public function sync(Request $request, PortfolioExportService $service)
     {
         // 1. Security Check: Validate Origin
-        $allowedOrigin = rtrim(env('PORTFOLIO_URL', 'http://localhost:5173'), '/');
+        // Allow both local dev and production URLs
+        $allowedOrigins = [
+            rtrim(env('PORTFOLIO_URL', 'http://localhost:5173'), '/'),
+            'https://portfolio.johnrak.online'
+        ];
+        
         $requestOrigin = rtrim($request->header('Origin'), '/');
 
-        // Allow local dev loopback or strict match
-        if ($allowedOrigin !== '*' && $requestOrigin !== $allowedOrigin) {
-            // Log::warning("Portfolio Sync Blocked: Invalid Origin", ['expected' => $allowedOrigin, 'got' => $requestOrigin]);
-            // return response()->json(['message' => 'Unauthorized Origin'], 403);
+        // Note: For now we are lenient and relying mostly on the Shared Secret Key.
+        // If strictly enforcing origin, uncomment the check below and ensure config matches exactly.
+        
+        /*
+        if (!in_array($requestOrigin, $allowedOrigins) && $requestOrigin !== '*') {
+             Log::warning("Portfolio Sync Blocked: Invalid Origin", ['expected' => $allowedOrigins, 'got' => $requestOrigin]);
+             // return response()->json(['message' => 'Unauthorized Origin'], 403);
         }
+        */
 
         // 2. Security Check: Validate Shared Secret Key
         $sharedSecret = env('PORTFOLIO_SHARED_SECRET');
