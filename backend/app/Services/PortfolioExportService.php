@@ -24,6 +24,26 @@ class PortfolioExportService
         if ($profile?->github_url) $basicsLinks[] = ['label' => 'GitHub', 'url' => $profile->github_url];
         if ($profile?->linkedin_url) $basicsLinks[] = ['label' => 'LinkedIn', 'url' => $profile->linkedin_url];
 
+        $projectsCount = $projects->count();
+        $yearsExp = 0;
+        
+        // Calculate years of experience
+        if ($experiences->isNotEmpty()) {
+            $earliest = $experiences->min('start_date');
+            if ($earliest) {
+                // Use floor() to get integer years
+                $yearsExp = floor(\Carbon\Carbon::parse($earliest)->diffInYears(now()));
+            }
+        }
+        // Round up or format
+        $yearsExpStr = $yearsExp > 0 ? $yearsExp . '+' : '<1';
+
+        // Determine Focus (e.g., from headline or most common skill)
+        // For now, simple logic or static "Full-Stack" if not deducible
+        $focus = 'Full-Stack';
+        if (stripos($profile?->headline ?? '', 'frontend') !== false) $focus = 'Frontend';
+        if (stripos($profile?->headline ?? '', 'backend') !== false) $focus = 'Backend';
+        
         return [
             'basics' => [
                 'name' => $profile?->email_public ?? 'Owner',
@@ -35,7 +55,20 @@ class PortfolioExportService
                 'email' => $profile?->email_public ?? null,
                 'links' => $basicsLinks,
             ],
-            'highlights' => [],
+            'highlights' => [
+                [
+                    'label' => 'Years Experience',
+                    'value' => $yearsExpStr
+                ],
+                [
+                    'label' => 'Projects Delivered',
+                    'value' => $projectsCount . '+'
+                ],
+                [
+                    'label' => 'Focus',
+                    'value' => $focus
+                ]
+            ],
             'skills' => $skills->pluck('name')->values()->all(),
             'experience' => $experiences->map(function ($e) {
                 $bullets = [];

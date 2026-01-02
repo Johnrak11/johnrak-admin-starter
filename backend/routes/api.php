@@ -22,6 +22,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login/2fa', [AuthController::class, 'login2fa'])->middleware('throttle:login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+    Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('auth:sanctum'); // Password Reset
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
@@ -52,7 +53,7 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('securi
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable'])->middleware('throttle:login');
     Route::get('/2fa/status', [TwoFactorController::class, 'status']);
     Route::post('/2fa/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:login');
-    Route::post('/portfolio-sync/token', [ClientPortfolioSyncController::class, 'issueToken'])->middleware('throttle:login');
+    // Route::post('/portfolio-sync/token', [ClientPortfolioSyncController::class, 'issueToken'])->middleware('throttle:login'); // Removed manual flow
     Route::get('/backup/config', [BackupController::class, 'getConfig']);
     Route::post('/backup/config', [BackupController::class, 'saveConfig']);
     Route::post('/backup/run', [BackupController::class, 'run'])->middleware('throttle:login');

@@ -49,8 +49,44 @@
           />
         </div>
         <div class="space-y-2">
-          <Label>Avatar URL</Label>
-          <Input v-model="form.avatar_url" placeholder="https://..." />
+          <Label>Avatar</Label>
+          <div class="flex items-center gap-4">
+            <div
+              v-if="previewUrl"
+              class="w-16 h-16 rounded-full overflow-hidden border border-border flex-shrink-0"
+            >
+              <img
+                :src="previewUrl"
+                alt="Avatar"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <div
+              v-else
+              class="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0"
+            >
+              <span class="text-2xl">👤</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input
+                type="file"
+                accept="image/*"
+                @change="handleFileChange"
+                class="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 mb-2"
+              />
+              <div class="flex items-center gap-2">
+                <Input
+                  v-model="form.avatar_url"
+                  placeholder="https://..."
+                  class="flex-1"
+                  @input="previewUrl = form.avatar_url"
+                />
+              </div>
+              <p class="text-xs text-muted-foreground mt-1">
+                Upload an image or paste a URL.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div class="md:col-span-2 space-y-2">
@@ -215,6 +251,9 @@ const form = reactive({
   avatar_url: "",
 });
 
+const previewUrl = ref("");
+const avatarFile = ref(null);
+
 const generator = reactive({
   open: false,
   loading: false,
@@ -232,12 +271,48 @@ const toast = reactive({
 async function load() {
   const res = await api().get("/api/portfolio/profile");
   Object.assign(form, res.data.profile || {});
+  previewUrl.value = form.avatar_url || "";
+}
+
+function handleFileChange(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  avatarFile.value = file;
+
+  // Create preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewUrl.value = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function save() {
   loading.value = true;
   try {
-    await api().put("/api/portfolio/profile", form);
+    // Use FormData to handle file upload
+    const formData = new FormData();
+    formData.append("_method", "PUT"); // Method spoofing for Laravel
+
+    for (const key in form) {
+      formData.append(key, form[key] ?? "");
+    }
+
+    if (avatarFile.value) {
+      formData.append("avatar_file", avatarFile.value);
+    }
+
+    // Send as POST (spoofed as PUT)
+    const res = await api().post("/api/portfolio/profile", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    // Update form with response (which includes new avatar_url)
+    Object.assign(form, res.data.profile || {});
+    previewUrl.value = form.avatar_url;
+    avatarFile.value = null; // Reset file input
+
     toast.title = "Saved";
     toast.message = "Profile updated.";
     toast.show = true;

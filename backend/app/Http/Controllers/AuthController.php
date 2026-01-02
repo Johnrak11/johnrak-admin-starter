@@ -151,4 +151,47 @@ class AuthController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'mfa_code' => ['nullable', 'string'],
+        ]);
+
+        // 1. Check Current Password
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The provided password does not match your current password.'],
+            ]);
+        }
+
+        // 2. Check 2FA if enabled
+        if ($user->isTwoFactorEnabled()) {
+            if (empty($validated['mfa_code'])) {
+                throw ValidationException::withMessages([
+                    'mfa_code' => ['MFA Code is required to change password.'],
+                ]);
+            }
+
+            $secret = $user->getTwoFactorSecretDecrypted();
+            $google2fa = new Google2FA();
+            
+            // Allow window of 1 (30s drift)
+            if (!$google2fa->verifyKey($secret, $validated['mfa_code'], 1)) {
+                throw ValidationException::withMessages([
+                    'mfa_code' => ['Invalid MFA Code.'],
+                ]);
+            }
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        return response()->json(['message' => 'Password updated successfully.']);
+    }
 }

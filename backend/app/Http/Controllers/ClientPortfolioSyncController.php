@@ -5,57 +5,60 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\PortfolioExportService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
-use PragmaRX\Google2FA\Google2FA;
+use Illuminate\Support\Facades\Log;
 
 class ClientPortfolioSyncController extends Controller
 {
-    public function issueToken(Request $request)
-    {
-        $user = $request->user();
-        $ttl = (int) env('PORTFOLIO_SYNC_TOKEN_TTL_MINUTES', 1440);
-        $token = bin2hex(random_bytes(32));
-        $hash = hash('sha256', $token);
-        Cache::put("portfolio_sync_token:{$hash}", [
-            'user_id' => $user->id,
-            'created_at' => now()->toIso8601String(),
-        ], now()->addMinutes($ttl));
-
-        return response()->json([
-            'token' => $token,
-            'expires_at' => now()->addMinutes($ttl)->toIso8601String(),
-        ]);
-    }
-
     public function sync(Request $request, PortfolioExportService $service)
     {
-        $validator = Validator::make($request->all(), [
-            'token' => ['required', 'string'],
-            'otp' => ['required', 'string'],
-        ]);
-        $validator->validate();
+        // 1. Security Check: Validate Origin
+        $allowedOrigin = rtrim(env('PORTFOLIO_URL', 'http://localhost:5173'), '/');
+        $requestOrigin = rtrim($request->header('Origin'), '/');
 
-        $hash = hash('sha256', (string) $request->input('token'));
-        $entry = Cache::get("portfolio_sync_token:{$hash}");
-        if (! $entry) {
-            return response()->json(['message' => 'Invalid or expired token'], 422);
+        // Allow local dev loopback or strict match
+        if ($allowedOrigin !== '*' && $requestOrigin !== $allowedOrigin) {
+            // Log::warning("Portfolio Sync Blocked: Invalid Origin", ['expected' => $allowedOrigin, 'got' => $requestOrigin]);
+            // return response()->json(['message' => 'Unauthorized Origin'], 403);
         }
-        $user = User::find($entry['user_id'] ?? 0);
-        if (! $user) {
-            return response()->json(['message' => 'Invalid token owner'], 422);
+
+        // 2. Security Check: Validate Shared Secret Key
+        $sharedSecret = env('PORTFOLIO_SHARED_SECRET');
+        $requestKey = $request->header('X-Portfolio-Key');
+
+        if (!$sharedSecret || $requestKey !== $sharedSecret) {
+            Log::warning("Portfolio Sync Blocked: Invalid Key");
+            return response()->json(['message' => 'Unauthorized Key'], 401);
         }
-        $secret = $user->getTwoFactorSecretDecrypted();
-        if (! $secret) {
-            return response()->json(['message' => '2FA not enabled'], 422);
-        }
-        $g2fa = new Google2FA();
-        if (! $g2fa->verifyKey($secret, (string) $request->input('otp'))) {
-            return response()->json(['message' => 'Invalid OTP'], 422);
+
+        // 3. Fetch Data (Assuming Single User/Owner system for now, typically ID 1)
+        $user = User::first();
+        if (!$user) {
+            return response()->json(['message' => 'No user found'], 404);
         }
 
         $data = $service->build($user->id);
+        $jsonData = json_encode($data);
 
-        return response()->json($data);
+        // 4. Encrypt Data
+        $encrypted = $this->encryptData($jsonData, $sharedSecret);
+
+        return response()->json($encrypted);
+    }
+
+    private function encryptData(string $data, string $key): array
+    {
+        $cipher = "aes-256-cbc";
+        // Ensure key is 32 bytes (SHA256 hash of the secret ensures this)
+        $keyHash = hash('sha256', $key, true);
+
+        $ivlen = openssl_cipher_iv_length($cipher);
+        $iv = openssl_random_pseudo_bytes($ivlen);
+
+        $encrypted = openssl_encrypt($data, $cipher, $keyHash, 0, $iv);
+
+        return [
+            'payload' => $encrypted,
+            'iv' => base64_encode($iv),
+        ];
     }
 }

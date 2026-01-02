@@ -17,6 +17,8 @@ use Gemini\Enums\Role;
 use Gemini\Data\Content;
 
 use App\Models\AppSetting;
+use App\Models\Backup;
+use Illuminate\Support\Facades\DB;
 
 class AiController extends Controller
 {
@@ -67,44 +69,84 @@ class AiController extends Controller
         if ($convId) $conv = Conversation::where('user_id', $userId)->where('id', $convId)->first();
         if (!$conv) $conv = Conversation::create(['user_id' => $userId, 'messages' => []]);
 
-        // 1. Full Context Injection (Replacing Pinecone RAG)
+        // 1. Fetch Real-Time System Status (Admin Only)
+        // Re-using logic from DashboardController to get health stats
+        $dashboardController = app(\App\Http\Controllers\DashboardController::class);
+        // We need to mock a request or extract the logic.
+        // For simplicity, let's extract the logic into private helper or just duplicate the simple checks.
+
+        // Server Health
+        $diskFree = disk_free_space('/');
+        $diskTotal = disk_total_space('/');
+        $diskUsage = $diskTotal > 0 ? round((($diskTotal - $diskFree) / $diskTotal) * 100, 1) . '%' : 'Unknown';
+
+        // Backup Status
+        $lastBackup = Backup::where('user_id', $userId)->where('is_successful', true)->latest()->first();
+        $backupInfo = $lastBackup
+            ? "Safe. Last run: " . $lastBackup->created_at->diffForHumans()
+            : "Warning: No recent backups found.";
+
+        // Security / 2FA Status
+        $user = $request->user();
+        $securityInfo = [
+            '2fa_enabled' => $user->two_factor_enabled ? 'Yes' : 'No',
+            'email' => $user->email,
+            'role' => 'Admin'
+        ];
+
+        // 2. Full Context Injection
         $projects = PortfolioProject::all(['name', 'description', 'tech_stack'])->toArray();
         $skills = PortfolioSkill::all(['name', 'level'])->toArray();
         $experiences = PortfolioExperience::all(['company', 'title', 'start_date', 'end_date', 'description'])->toArray();
-        $profile = PortfolioProfile::first(['headline', 'summary', 'location', 'email_public', 'website_url', 'github_url', 'linkedin_url']);
+        $profile = PortfolioProfile::first(['headline', 'summary', 'about_me', 'location', 'email_public', 'website_url', 'github_url', 'linkedin_url']);
 
         $contextData = [
+            'system_status' => [
+                'disk_usage' => $diskUsage,
+                'backup_status' => $backupInfo,
+                'security' => $securityInfo,
+            ],
             'profile' => $profile ? $profile->toArray() : null,
             'projects' => $projects,
             'skills' => $skills,
             'experience' => $experiences,
+            'navigation_map' => [
+                'MFA/2FA Setup' => '/security',
+                'Backups' => '/security/backup',
+                'Dashboard' => '/',
+                'Portfolio Profile' => '/portfolio/profile',
+                'Projects' => '/portfolio/projects',
+            ]
         ];
 
-        // 2. Prepare System Instruction
-        $systemPrompt = "You are the Johnrak AI Assistant, a digital representative of the developer Vorak.\n" .
-            "Data Source: You have access to Vorak's complete portfolio data below. Always prioritize this data.\n" .
-            "Persona: Be technical, concise, and professional.\n" .
-            "Constraints: If asked about something not in the provided context, say 'I haven't added that experience to my database yet.' Do not hallucinate.\n" .
-            "Style: Use Markdown for structure. Use bold text for project names. Keep responses under 150 words.\n\n" .
-            "[FULL CONTEXT DATA]: " . json_encode($contextData);
+        // 3. Prepare System Instruction
+        $systemPrompt = "You are the Johnrak AI Admin Assistant.\n\n" .
+            "**CORE OBJECTIVE:**\n" .
+            "Assist the administrator (Vorak) with managing his system, checking health status, and navigating the dashboard.\n\n" .
+            "**REAL-TIME SYSTEM DATA:**\n" .
+            "Use this live data to answer questions:\n" . json_encode($contextData['system_status']) . "\n\n" .
+            "**NAVIGATION MAP:**\n" .
+            "If the user asks 'Where can I...' or 'How do I...', refer to these paths:\n" . json_encode($contextData['navigation_map']) . "\n\n" .
+            "**PORTFOLIO CONTEXT:**\n" .
+            "You also have access to the portfolio data if needed: " . json_encode(['projects' => $projects]) . "\n\n" .
+            "**BEHAVIOR:**\n" .
+            "1. **System Monitor:** If asked about health/backups, report the exact status from the data above.\n" .
+            "2. **Navigator:** If the user explicitly asks to go somewhere (e.g., 'Take me to dashboard', 'Go to settings'), output a special command at the end of your response: `[NAVIGATE:/path]`. Example: 'Sure! [NAVIGATE:/security]'.\n" .
+            "3. **Assistant:** Be helpful, concise, and professional.\n";
 
-        // 3. Prepare History
+        // 4. Prepare History
         $history = is_array($conv->messages) ? $conv->messages : [];
         $geminiHistory = [];
-        // Last 6 messages (3 exchanges)
         foreach (array_slice($history, max(0, count($history) - 6)) as $msg) {
-            // Map 'assistant' to 'model'
             $role = ($msg['role'] === 'user') ? Role::USER : Role::MODEL;
-            // Ensure content is not empty
             if (!empty($msg['content'])) {
                 $geminiHistory[] = Content::parse(part: $msg['content'], role: $role);
             }
         }
 
-        // 4. Call Gemini
+        // 5. Call Gemini
         $answer = '';
         try {
-            // Using gemini-flash-latest as it is the stable model available for the current plan
             $response = Gemini::generativeModel('gemini-flash-latest')
                 ->withSystemInstruction(Content::parse(part: $systemPrompt))
                 ->startChat(history: $geminiHistory)
@@ -113,15 +155,14 @@ class AiController extends Controller
             $answer = $response->text();
         } catch (\Throwable $e) {
             Log::error("Gemini chat error: " . $e->getMessage());
-            $answer = "Vorak's AI is resting. Reason: " . $e->getMessage();
+            $answer = "System error: " . $e->getMessage();
         }
 
-        // 5. Save Conversation
+        // 6. Save Conversation
         $newHistory = array_merge($history, [
             ['role' => 'user', 'content' => $message],
-            ['role' => 'assistant', 'content' => $answer], // Store as assistant for internal consistency
+            ['role' => 'assistant', 'content' => $answer],
         ]);
-        // Keep last 20 messages
         $conv->messages = array_values(array_slice($newHistory, -20));
         $conv->save();
 

@@ -31,9 +31,18 @@ class ProfileController extends Controller
             'github_url' => ['nullable', 'url', 'max:500'],
             'linkedin_url' => ['nullable', 'url', 'max:500'],
             'avatar_url' => ['nullable', 'url', 'max:500'],
+            'avatar_file' => ['nullable', 'image', 'max:5120'], // Max 5MB
         ]);
 
         $profile = PortfolioProfile::firstOrCreate(['user_id' => $request->user()->id]);
+
+        // Handle File Upload
+        if ($request->hasFile('avatar_file')) {
+            $path = $request->file('avatar_file')->store('avatars', 'public');
+            // Generate full URL
+            $validated['avatar_url'] = url('storage/' . $path);
+        }
+
         $profile->fill($validated)->save();
 
         return response()->json(['profile' => $profile]);

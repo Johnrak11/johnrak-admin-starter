@@ -42,38 +42,6 @@
       </div>
     </Card>
 
-    <Card>
-      <template #header>
-        <div class="text-lg font-semibold">Portfolio Sync Token</div>
-        <div class="text-sm text-muted-foreground">
-          Generate a 24h token to sync your portfolio site
-        </div>
-      </template>
-      <div class="space-y-4">
-        <div class="flex gap-2">
-          <Button @click="genToken" :disabled="tokenLoading">{{
-            tokenLoading ? "Generating..." : "Generate Sync Token"
-          }}</Button>
-          <Button v-if="syncToken" variant="ghost" @click="copyToken"
-            >Copy</Button
-          >
-        </div>
-        <div
-          v-if="syncToken"
-          class="rounded-lg border border-border bg-background p-3 text-sm"
-        >
-          <div>
-            <span class="text-muted-foreground">Token:</span>
-            <span class="font-mono break-all">{{ syncToken }}</span>
-          </div>
-          <div class="text-xs text-muted-foreground mt-1">
-            Expires at: {{ tokenExpires || "—" }}
-          </div>
-        </div>
-        <div v-else class="text-sm text-muted-foreground">No token yet.</div>
-      </div>
-    </Card>
-
     <Card v-if="qrSvg || qrPng">
       <template #header>
         <div class="text-lg font-semibold">Scan QR & Confirm</div>
@@ -103,6 +71,50 @@
           <Button @click="confirm" :disabled="loading">{{
             loading ? "Confirming..." : "Confirm"
           }}</Button>
+        </div>
+      </div>
+    </Card>
+
+    <Card>
+      <template #header>
+        <div class="text-lg font-semibold">Change Password</div>
+        <div class="text-sm text-muted-foreground">
+          Update your account password securely.
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <Label>Current Password</Label>
+          <Input
+            type="password"
+            v-model="pwdForm.current_password"
+            placeholder="••••••••"
+          />
+        </div>
+        <div class="space-y-2">
+          <Label>New Password</Label>
+          <Input
+            type="password"
+            v-model="pwdForm.password"
+            placeholder="••••••••"
+          />
+        </div>
+        <div class="space-y-2">
+          <Label>Confirm New Password</Label>
+          <Input
+            type="password"
+            v-model="pwdForm.password_confirmation"
+            placeholder="••••••••"
+          />
+        </div>
+        <div v-if="enabled" class="space-y-2">
+          <Label>MFA Code (Required)</Label>
+          <Input v-model="pwdForm.mfa_code" placeholder="123456" />
+        </div>
+        <div class="flex justify-end">
+          <Button @click="updatePassword" :disabled="pwdLoading">
+            {{ pwdLoading ? "Updating..." : "Update Password" }}
+          </Button>
         </div>
       </div>
     </Card>
@@ -141,9 +153,14 @@ const qrSvg = ref("");
 const qrPng = ref("");
 const confirmCode = ref("");
 const recovery = ref([]);
-const syncToken = ref("");
-const tokenExpires = ref("");
-const tokenLoading = ref(false);
+
+const pwdLoading = ref(false);
+const pwdForm = ref({
+  current_password: "",
+  password: "",
+  password_confirmation: "",
+  mfa_code: "",
+});
 
 const enabled = computed(() => !!status.value.enabled);
 const statusText = computed(() => (enabled.value ? "Enabled" : "Disabled"));
@@ -164,23 +181,24 @@ async function setup() {
   }
 }
 
-async function genToken() {
-  tokenLoading.value = true;
-  try {
-    const res = await api().post("/api/security/portfolio-sync/token");
-    syncToken.value = res.data.token || "";
-    tokenExpires.value = res.data.expires_at || "";
-  } catch (e) {
-    syncToken.value = "";
-    tokenExpires.value = "";
-  } finally {
-    tokenLoading.value = false;
-  }
-}
+async function updatePassword() {
+  if (!pwdForm.value.current_password || !pwdForm.value.password) return;
 
-function copyToken() {
-  if (!syncToken.value) return;
-  navigator.clipboard.writeText(syncToken.value).catch(() => {});
+  pwdLoading.value = true;
+  try {
+    await api().put("/api/auth/password", pwdForm.value);
+    alert("Password updated successfully.");
+    pwdForm.value = {
+      current_password: "",
+      password: "",
+      password_confirmation: "",
+      mfa_code: "",
+    };
+  } catch (e) {
+    alert(e.response?.data?.message || "Failed to update password");
+  } finally {
+    pwdLoading.value = false;
+  }
 }
 
 async function confirm() {

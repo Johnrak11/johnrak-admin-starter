@@ -53,11 +53,13 @@
 
 <script setup>
 import { ref, nextTick, watch } from "vue";
+import { useRouter } from "vue-router";
 import Button from "./ui/Button.vue";
 import Input from "./ui/Input.vue";
 import { api } from "../lib/api";
 import MarkdownIt from 'markdown-it';
 
+const router = useRouter();
 const md = new MarkdownIt({
   breaks: true,
   linkify: true
@@ -71,7 +73,8 @@ const scrollArea = ref(null);
 let conversationId = 0;
 
 function renderMarkdown(text) {
-  return md.render(text);
+  // Hide navigation commands from display
+  return md.render(text.replace(/\[NAVIGATE:(.*?)\]/g, ''));
 }
 
 function scrollToBottom() {
@@ -108,7 +111,17 @@ async function send() {
       conversation_id: conversationId,
     });
     conversationId = res.data?.conversation_id || conversationId;
-    const reply = res.data?.assistant || "";
+    let reply = res.data?.assistant || "";
+    
+    // Check for navigation command
+    const navMatch = reply.match(/\[NAVIGATE:(.*?)\]/);
+    if (navMatch) {
+      const path = navMatch[1];
+      router.push(path);
+      // Optional: Remove the command from the visible message if you want, 
+      // but renderMarkdown already handles hiding it.
+    }
+    
     msgs.value.push({ role: "assistant", content: reply });
   } catch (e) {
     msgs.value.push({
