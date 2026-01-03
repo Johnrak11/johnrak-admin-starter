@@ -90,6 +90,7 @@
               >
               <input
                 type="number"
+                v-model.number="form.entry"
                 class="w-full bg-background border border-input rounded px-2 py-1 text-xs font-mono focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 placeholder="0.00"
               />
@@ -101,6 +102,7 @@
               >
               <input
                 type="number"
+                v-model.number="form.tp1"
                 class="w-full bg-green-500/5 border border-green-500/20 rounded px-2 py-1 text-xs font-mono text-green-500 focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 outline-none transition-all"
                 placeholder="0.00"
               />
@@ -112,6 +114,7 @@
               >
               <input
                 type="number"
+                v-model.number="form.tp2"
                 class="w-full bg-green-500/5 border border-green-500/20 rounded px-2 py-1 text-xs font-mono text-green-500 focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 outline-none transition-all"
                 placeholder="0.00"
               />
@@ -123,16 +126,71 @@
               >
               <input
                 type="number"
+                v-model.number="form.sl"
                 class="w-full bg-red-500/5 border border-red-500/20 rounded px-2 py-1 text-xs font-mono text-red-500 focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 outline-none transition-all"
                 placeholder="0.00"
               />
             </div>
             <div class="flex items-end col-span-2 md:col-span-1">
               <button
+                @click="saveTrade"
                 class="w-full h-[26px] bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-medium rounded transition-all flex items-center justify-center gap-1.5"
               >
                 <span>💾</span> Save
               </button>
+            </div>
+          </div>
+          <div class="mt-3 border-t border-border pt-2">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-blue-500 text-sm">📋</span>
+              <h3 class="font-medium text-xs">My Trades</h3>
+            </div>
+            <div v-if="trades.length" class="space-y-1.5">
+              <div
+                v-for="t in trades"
+                :key="t.id"
+                class="flex items-center justify-between text-[10px] bg-muted/30 rounded px-2 py-1"
+              >
+                <div class="flex-1">
+                  <span class="font-medium">{{ t.symbol }}</span>
+                  <span class="ml-1">E: {{ t.entry }}</span>
+                  <span v-if="t.tp1" class="ml-1 text-green-500"
+                    >TP1: {{ t.tp1 }}</span
+                  >
+                  <span v-if="t.tp2" class="ml-1 text-green-500"
+                    >TP2: {{ t.tp2 }}</span
+                  >
+                  <span v-if="t.sl" class="ml-1 text-red-500"
+                    >SL: {{ t.sl }}</span
+                  >
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    :class="{
+                      'text-green-500':
+                        t.status === 'tp1' || t.status === 'tp2',
+                      'text-red-500': t.status === 'sl',
+                      'text-muted-foreground': t.status === 'active',
+                    }"
+                    >{{ t.status }}</span
+                  >
+                  <button
+                    class="h-6 px-2 rounded bg-accent hover:bg-accent/70"
+                    @click="checkTrade(t)"
+                  >
+                    Check
+                  </button>
+                  <button
+                    class="h-6 px-2 rounded bg-destructive hover:bg-destructive/80 text-destructive-foreground"
+                    @click="deleteTrade(t)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-[10px] text-muted-foreground">
+              No trades yet
             </div>
           </div>
         </div>
@@ -263,6 +321,8 @@ const newsError = ref(null);
 const analysis = ref(null);
 const chartLoaded = ref(false);
 const chartKey = ref(0);
+const form = ref({ entry: null, tp1: null, tp2: null, sl: null });
+const trades = ref([]);
 
 const isPositive = computed(() => {
   return market.value && parseFloat(market.value.priceChangePercent) >= 0;
@@ -349,6 +409,52 @@ async function fetchData() {
   }
 }
 
+async function fetchTrades() {
+  try {
+    const res = await api().get("/api/crypto/trades");
+    trades.value = res.data.trades || [];
+  } catch (e) {
+    trades.value = [];
+  }
+}
+
+async function saveTrade() {
+  if (!form.value.entry) return;
+  try {
+    const payload = {
+      symbol: selectedCoin.value,
+      entry: form.value.entry,
+      tp1: form.value.tp1 || null,
+      tp2: form.value.tp2 || null,
+      sl: form.value.sl || null,
+    };
+    await api().post("/api/crypto/trades", payload);
+    form.value = { entry: null, tp1: null, tp2: null, sl: null };
+    await fetchTrades();
+  } catch (e) {
+    // no-op
+  }
+}
+
+async function checkTrade(t) {
+  try {
+    const res = await api().post(`/api/crypto/trades/${t.id}/check`);
+    const updated = res.data.trade;
+    const idx = trades.value.findIndex((x) => x.id === updated.id);
+    if (idx >= 0) trades.value[idx] = updated;
+  } catch (e) {
+    // no-op
+  }
+}
+
+async function deleteTrade(t) {
+  try {
+    await api().delete(`/api/crypto/trades/${t.id}`);
+    trades.value = trades.value.filter((x) => x.id !== t.id);
+  } catch (e) {
+    // no-op
+  }
+}
 async function analyze() {
   if (!market.value) return;
 
@@ -401,6 +507,7 @@ OUTPUT FORMAT (Markdown):
 
 onMounted(() => {
   fetchData();
+  fetchTrades();
   nextTick(() => {
     loadTradingViewWidget();
   });

@@ -9,7 +9,8 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('db:backup')->dailyAt('00:00');
+        $schedule->command('db:backup')->dailyAt('00:00')->timezone(config('app.timezone', 'UTC'));
+        $schedule->command('trades:check')->everyMinute();
     }
 
     protected function commands(): void
@@ -17,4 +18,3 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__.'/Commands');
     }
 }
-

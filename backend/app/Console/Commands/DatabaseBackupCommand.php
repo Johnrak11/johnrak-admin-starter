@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\BackupConfig;
 use App\Services\DatabaseBackupService;
 use Illuminate\Console\Command;
 
@@ -18,6 +19,11 @@ class DatabaseBackupCommand extends Command
             $this->warn('No owner user found');
             return self::FAILURE;
         }
+        $cfg = BackupConfig::where('user_id', $userId)->first();
+        if (!$cfg || !$cfg->enabled) {
+            $this->info('Backup skipped (disabled)');
+            return self::SUCCESS;
+        }
         $key = $svc->runForUser($userId);
         if (!$key) {
             $this->info('Backup skipped (not configured/enabled)');
@@ -27,4 +33,3 @@ class DatabaseBackupCommand extends Command
         return self::SUCCESS;
     }
 }
-

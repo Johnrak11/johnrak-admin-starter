@@ -31,6 +31,10 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Crypto Intel
+    Route::get('/crypto/trades', [CryptoController::class, 'listTrades']);
+    Route::post('/crypto/trades', [CryptoController::class, 'saveTrade']);
+    Route::post('/crypto/trades/{trade}/check', [CryptoController::class, 'checkTrade']);
+    Route::delete('/crypto/trades/{trade}', [CryptoController::class, 'deleteTrade']);
     Route::get('/crypto/{coin}', [CryptoController::class, 'getMarketData']);
 
     // Telegram Test

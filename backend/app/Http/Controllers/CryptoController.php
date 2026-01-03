@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Trade;
 
 class CryptoController extends Controller
 {
@@ -120,5 +122,86 @@ class CryptoController extends Controller
             'market' => $marketData,
             'news' => $newsData
         ]);
+    }
+
+    public function listTrades()
+    {
+        $trades = Trade::where('user_id', Auth::id())
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+        return response()->json(['trades' => $trades]);
+    }
+
+    public function saveTrade(Request $request)
+    {
+        $data = $request->validate([
+            'symbol' => 'required|string|max:10',
+            'entry' => 'required|numeric',
+            'tp1' => 'nullable|numeric',
+            'tp2' => 'nullable|numeric',
+            'sl' => 'nullable|numeric',
+        ]);
+        $trade = Trade::create(array_merge($data, [
+            'user_id' => Auth::id(),
+            'status' => 'active',
+        ]));
+        return response()->json(['trade' => $trade]);
+    }
+
+    public function checkTrade(Trade $trade)
+    {
+        if ($trade->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $symbol = strtoupper($trade->symbol);
+        $price = null;
+
+        try {
+            $priceResponse = Http::timeout(3)->get("https://api.binance.com/api/v3/ticker/24hr", [
+                'symbol' => "{$symbol}USDT"
+            ]);
+            if ($priceResponse->successful()) {
+                $data = $priceResponse->json();
+                $price = (float) ($data['lastPrice'] ?? null);
+            }
+        } catch (\Exception $e) {
+            Log::warning("Binance price check failed: " . $e->getMessage());
+        }
+
+        if (!$price) {
+            return response()->json(['status' => $trade->status, 'note' => 'No price']);
+        }
+
+        $prevStatus = $trade->status;
+        if ($trade->tp2 && $price >= (float)$trade->tp2) {
+            $trade->status = 'tp2';
+        } elseif ($trade->tp1 && $price >= (float)$trade->tp1) {
+            $trade->status = 'tp1';
+        } elseif ($trade->sl && $price <= (float)$trade->sl) {
+            $trade->status = 'sl';
+        }
+
+        if ($trade->status !== $prevStatus && $trade->status !== 'active') {
+            $trade->triggered_at = now();
+            $trade->save();
+            \App\Services\TelegramService::sendMessage(
+                "📣 Trade Alert {$trade->symbol}\nStatus: {$trade->status}\nPrice: $" . number_format($price, 2)
+            );
+        } else {
+            $trade->save();
+        }
+
+        return response()->json(['trade' => $trade, 'price' => $price]);
+    }
+
+    public function deleteTrade(Trade $trade)
+    {
+        if ($trade->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        $trade->delete();
+        return response()->noContent();
     }
 }

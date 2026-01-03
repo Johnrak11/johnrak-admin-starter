@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portfolio;
 use App\Http\Controllers\Controller;
 use App\Models\PortfolioProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 class ProfileController extends Controller
 {
@@ -38,6 +39,13 @@ class ProfileController extends Controller
 
         // Handle File Upload
         if ($request->hasFile('avatar_file')) {
+            try {
+                if (!is_dir(public_path('storage'))) {
+                    @Artisan::call('storage:link');
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
             $path = $request->file('avatar_file')->store('avatars', 'public');
             // Generate full URL
             $validated['avatar_url'] = url('storage/' . $path);
