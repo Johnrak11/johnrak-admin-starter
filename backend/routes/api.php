@@ -16,6 +16,8 @@ use App\Http\Controllers\AiController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\CryptoController;
+
 Route::prefix('auth')->group(function () {
     // Route::options('/login', function() { return response()->noContent(); }); // Handle preflight explicitly if middleware fails
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -27,6 +29,15 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Crypto Intel
+    Route::get('/crypto/{coin}', [CryptoController::class, 'getMarketData']);
+
+    // Telegram Test
+    Route::get('/admin/test-telegram', function () {
+        $ok = \App\Services\TelegramService::sendMessage("🚀 <b>Johnrak System is Online!</b>\nTest notification from Admin Dashboard.");
+        return response()->json(['sent' => $ok]);
+    });
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('portfolio')->group(function () {

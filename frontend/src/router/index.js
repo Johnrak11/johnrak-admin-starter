@@ -10,6 +10,7 @@ import SecurityBackup from "../views/SecurityBackup.vue";
 // import AiSearch from "../views/AiSearch.vue";
 import AiSettings from "../views/AiSettings.vue";
 import AiChat from "../views/AiChat.vue";
+import CryptoDashboard from "../views/CryptoDashboard.vue";
 
 import Profile from "../views/portfolio/Profile.vue";
 import Experiences from "../views/portfolio/Experiences.vue";
@@ -43,6 +44,7 @@ const router = createRouter({
         // { path: "/ai/search", component: AiSearch },
         { path: "/ai/settings", component: AiSettings },
         { path: "/ai/chat", component: AiChat },
+        { path: "/crypto", component: CryptoDashboard },
       ],
     },
   ],

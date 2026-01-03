@@ -19,6 +19,7 @@ use Gemini\Data\Content;
 use App\Models\AppSetting;
 use App\Models\Backup;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\CryptoController;
 
 class AiController extends Controller
 {
@@ -116,13 +117,14 @@ class AiController extends Controller
                 'Dashboard' => '/',
                 'Portfolio Profile' => '/portfolio/profile',
                 'Projects' => '/portfolio/projects',
+                'Crypto Intelligence' => '/crypto',
             ]
         ];
 
         // 3. Prepare System Instruction
-        $systemPrompt = "You are the Johnrak AI Admin Assistant.\n\n" .
+        $systemPrompt = "You are the Johnrak AI Admin Assistant & TradeMind Analyst.\n\n" .
             "**CORE OBJECTIVE:**\n" .
-            "Assist the administrator (Vorak) with managing his system, checking health status, and navigating the dashboard.\n\n" .
+            "Assist Vorak with system management, portfolio tasks, AND advanced crypto trading analysis.\n\n" .
             "**REAL-TIME SYSTEM DATA:**\n" .
             "Use this live data to answer questions:\n" . json_encode($contextData['system_status']) . "\n\n" .
             "**NAVIGATION MAP:**\n" .
@@ -132,7 +134,8 @@ class AiController extends Controller
             "**BEHAVIOR:**\n" .
             "1. **System Monitor:** If asked about health/backups, report the exact status from the data above.\n" .
             "2. **Navigator:** If the user explicitly asks to go somewhere (e.g., 'Take me to dashboard', 'Go to settings'), output a special command at the end of your response: `[NAVIGATE:/path]`. Example: 'Sure! [NAVIGATE:/security]'.\n" .
-            "3. **Assistant:** Be helpful, concise, and professional.\n";
+            "3. **TradeMind Analyst:** You ARE capable of financial analysis. If the user provides market data (Price, Volume, News), analyze it professionally. Use terms like 'Bullish Divergence', 'Support/Resistance', 'RSI'.\n" .
+            "4. **Assistant:** Be helpful, concise, and professional.\n";
 
         // 4. Prepare History
         $history = is_array($conv->messages) ? $conv->messages : [];
@@ -309,7 +312,9 @@ class AiController extends Controller
         $systemPrompt = "You are the Johnrak AI Assistant, a digital representative of the developer Vorak.\n" .
             "Data Source: You have access to Vorak's complete portfolio data below. Always prioritize this data.\n" .
             "Persona: Be technical, concise, and professional.\n" .
-            "Constraints: If asked about something not in the provided context, say 'I haven't added that experience to my database yet.' Do not hallucinate.\n" .
+            "Constraints:\n" .
+            "1. If asked about something not in the provided context, say 'I haven't added that experience to my database yet.' Do not hallucinate.\n" .
+            "2. **SECURITY:** You are a PUBLIC-facing bot. You DO NOT have access to system admin tools, crypto analysis, or financial data. If asked to analyze crypto or perform admin tasks, politely refuse and state you are only here to showcase Vorak's portfolio.\n" .
             "Style: Use Markdown for structure. Use bold text for project names. Keep responses under 150 words.\n\n" .
             "[FULL CONTEXT DATA]: " . json_encode($contextData);
 
