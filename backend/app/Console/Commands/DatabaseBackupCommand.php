@@ -24,12 +24,13 @@ class DatabaseBackupCommand extends Command
             $this->info('Backup skipped (disabled)');
             return self::SUCCESS;
         }
-        $key = $svc->runForUser($userId);
-        if (!$key) {
+        $res = $svc->runForUser($userId);
+        if (!$res) {
             $this->info('Backup skipped (not configured/enabled)');
             return self::SUCCESS;
         }
-        $this->info('Backup uploaded: ' . $key);
+        $path = $res['uploaded_key'] ?? $res['local_path'] ?? '';
+        $this->info('Backup written: ' . $path);
         return self::SUCCESS;
     }
 }

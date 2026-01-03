@@ -86,15 +86,16 @@ class DatabaseBackupService
 
     private function dumpToFile(string $path): void
     {
-        // If mysqldump is available, use it (best for full backups)
+        $preferDump = (bool) filter_var(env('DB_BACKUP_USE_MYSQLDUMP', false), FILTER_VALIDATE_BOOLEAN);
         $hasMysqldump = false;
-        try {
-            // Check if mysqldump exists in path
-            $check = shell_exec('which mysqldump');
-            if (!empty($check)) {
-                $hasMysqldump = true;
+        if ($preferDump) {
+            try {
+                $check = shell_exec('which mysqldump');
+                if (!empty($check)) {
+                    $hasMysqldump = true;
+                }
+            } catch (\Exception $e) {
             }
-        } catch (\Exception $e) {
         }
 
         if ($hasMysqldump) {
@@ -112,14 +113,12 @@ class DatabaseBackupService
             }
         }
 
-        // Fallback: Poor man's backup (JSON export via PHP)
-        // This is not ideal for large DBs but works for local dev/testing without mysqldump
         $tables = DB::select('SHOW TABLES');
         $dbName = config('database.connections.mysql.database');
         $prop = "Tables_in_$dbName";
 
         $fp = fopen($path, 'w');
-        fwrite($fp, "-- Fallback Backup (JSON format) - mysqldump not found\n");
+        fwrite($fp, "-- Fallback Backup (JSON format)\n");
         fwrite($fp, "-- Created at: " . now() . "\n\n");
 
         foreach ($tables as $table) {
