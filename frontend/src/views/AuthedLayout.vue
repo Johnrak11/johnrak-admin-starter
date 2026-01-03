@@ -215,9 +215,15 @@ const navGroups = [
     ],
   },
   {
+    label: "Intelligence",
+    items: [
+      { to: "/crypto", label: "TradeMind (Crypto)" },
+      { to: "/ai/chat", label: "Chat with AI" },
+    ],
+  },
+  {
     label: "System",
     items: [
-      { to: "/ai/chat", label: "Chat with AI" },
       { to: "/settings", label: "General Settings" },
       { to: "/ai/settings", label: "Gemini Configuration" },
       { to: "/security", label: "Security & Tokens" },
@@ -228,6 +234,7 @@ const navGroups = [
 const collapsed = reactive({
   Main: false,
   Portfolio: false,
+  Intelligence: false,
   System: false,
 });
 function toggle(label) {
@@ -269,6 +276,7 @@ const titles = {
   "/portfolio/projects": "Projects",
   "/portfolio/attachments": "CV & Files",
   "/portfolio/linkedin-import": "LinkedIn Import",
+  "/crypto": "TradeMind AI",
   "/ai/chat": "Chat with AI",
   "/settings": "Settings",
   "/security": "Security",
