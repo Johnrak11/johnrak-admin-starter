@@ -8,7 +8,7 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: "https://admin.johnrak.online"
+      APP_URL: "https://admin-service.johnrak.online"
       FRONTEND_ORIGIN: "https://admin.johnrak.online"
       SANCTUM_STATEFUL_DOMAINS: "admin.johnrak.online"
       SESSION_DOMAIN: ".johnrak.online"
@@ -33,7 +33,7 @@ services:
       - "80"
     environment:
       - FRONTEND_DOMAIN=admin.johnrak.online
-      - BACKEND_DOMAIN=admin.johnrak.online
+      - BACKEND_DOMAIN=admin-service.johnrak.online
       - ACME_EMAIL=admin@johnrak.online
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
@@ -55,7 +55,7 @@ services:
       # Payment webhook URL - use external URL since backend is accessed via Caddy
       # Default: https://admin-service.johnrak.online/api/payment/webhook
       # Can be overridden via .env file
-      PAYMENT_WEBHOOK_URL: "https://admin.johnrak.online/api/payment/webhook"
+      PAYMENT_WEBHOOK_URL: "https://admin-service.johnrak.online/api/payment/webhook"
     env_file:
       - ./telegramBotLstener/.env
     networks:
