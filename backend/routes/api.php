@@ -88,3 +88,20 @@ Route::prefix('client')->group(function () {
     Route::post('/portfolio/sync', [ClientPortfolioSyncController::class, 'sync'])->middleware('throttle:portfolio-sync');
     Route::post('/ai/chat', [AiController::class, 'publicChat'])->middleware('throttle:ai-search');
 });
+
+Route::prefix('payment')->group(function () {
+    // Public webhook (no auth, but requires secret key)
+    Route::post('/webhook', [\App\Http\Controllers\PaymentController::class, 'webhook'])->middleware('throttle:payment-webhook');
+    
+    // Protected routes (owner only)
+    Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
+        Route::get('/config', [\App\Http\Controllers\PaymentController::class, 'getConfig']);
+        Route::post('/config', [\App\Http\Controllers\PaymentController::class, 'saveConfig']);
+        Route::post('/test', [\App\Http\Controllers\PaymentController::class, 'testPayment']);
+        Route::get('/transactions', [\App\Http\Controllers\PaymentController::class, 'listTransactions']);
+        Route::get('/transactions/{transaction}', [\App\Http\Controllers\PaymentController::class, 'getTransaction']);
+        Route::post('/tokens', [\App\Http\Controllers\PaymentController::class, 'generateToken']);
+        Route::get('/tokens', [\App\Http\Controllers\PaymentController::class, 'listTokens']);
+        Route::delete('/tokens/{token}', [\App\Http\Controllers\PaymentController::class, 'revokeToken']);
+    });
+});

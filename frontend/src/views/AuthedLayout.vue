@@ -222,6 +222,15 @@ const navGroups = [
     ],
   },
   {
+    label: "Payment Gateway",
+    items: [
+      { to: "/payment/config", label: "Payment Config" },
+      { to: "/payment/test", label: "Test Payment" },
+      { to: "/payment/transactions", label: "Transactions" },
+      { to: "/payment/tokens", label: "Generate Token" },
+    ],
+  },
+  {
     label: "System",
     items: [
       { to: "/settings", label: "General Settings" },
@@ -235,6 +244,7 @@ const collapsed = reactive({
   Main: false,
   Portfolio: false,
   Intelligence: false,
+  "Payment Gateway": false,
   System: false,
 });
 function toggle(label) {
@@ -252,6 +262,7 @@ function ensureActiveGroupOpen() {
   const path = route.path;
   const map = {
     Portfolio: /^\/portfolio\//,
+    "Payment Gateway": /^\/payment\//,
     System: /^\/(settings|security|ai\/settings)/,
   };
   Object.keys(collapsed).forEach((k) => (collapsed[k] = true));
@@ -278,6 +289,10 @@ const titles = {
   "/portfolio/linkedin-import": "LinkedIn Import",
   "/crypto": "TradeMind AI",
   "/ai/chat": "Chat with AI",
+  "/payment/config": "Payment Config",
+  "/payment/test": "Test Payment",
+  "/payment/transactions": "Transactions",
+  "/payment/tokens": "Generate Token",
   "/settings": "Settings",
   "/security": "Security",
 };

@@ -28,5 +28,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('ai-search', function (Request $request) {
             return Limit::perMinute(12)->by($request->ip());
         });
+        RateLimiter::for('payment-webhook', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
     }
 }
