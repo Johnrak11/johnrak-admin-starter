@@ -19,5 +19,6 @@ COPY . /app
 # - TELEGRAM_BOT_TOKEN: Your Telegram bot token from @BotFather
 # - PAYMENT_WEBHOOK_SECRET: The webhook secret from admin panel
 # Optional:
-# - PAYMENT_WEBHOOK_URL: Your webhook URL (default: http://backend/api/payment/webhook)
-CMD ["python3", "listener.py"]
+# - PAYMENT_WEBHOOK_URL: Your webhook URL (default: https://admin-service.johnrak.online/api/payment/webhook)
+# Use unbuffered Python output to see logs immediately
+CMD ["python3", "-u", "listener.py"]

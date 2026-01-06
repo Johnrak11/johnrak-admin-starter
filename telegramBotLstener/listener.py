@@ -270,25 +270,47 @@ def start_bot_listener():
     """
     Start the Telegram bot listener to handle messages.
     """
+    import sys
+    
+    # Force unbuffered output
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN', 'your-telegram-bot-token')
     
-    print(f"\n{'='*60}")
-    print(f"🤖 TELEGRAM BOT LISTENER STARTING")
-    print(f"{'='*60}")
-    print(f"Webhook URL: {SERVICE_URL}")
-    print(f"Webhook Secret: {'✅ Set' if SERVICE_TOKEN else '❌ NOT SET'}")
-    print(f"Bot Token: {'✅ Set' if bot_token != 'your-telegram-bot-token' else '❌ NOT SET'}")
-    print(f"{'='*60}\n")
+    print(f"\n{'='*60}", flush=True)
+    print(f"🤖 TELEGRAM BOT LISTENER STARTING", flush=True)
+    print(f"{'='*60}", flush=True)
+    print(f"Webhook URL: {SERVICE_URL}", flush=True)
+    print(f"Webhook Secret: {'✅ Set' if SERVICE_TOKEN else '❌ NOT SET'}", flush=True)
+    print(f"Bot Token: {'✅ Set' if bot_token != 'your-telegram-bot-token' else '❌ NOT SET'}", flush=True)
+    print(f"{'='*60}\n", flush=True)
+    
+    # Check if .env file exists
+    env_file_path = os.path.join(os.path.dirname(__file__), '.env')
+    if not os.path.exists(env_file_path):
+        print(f"⚠️  WARNING: .env file not found at {env_file_path}", flush=True)
+        print(f"   Make sure to create .env file with TELEGRAM_BOT_TOKEN and PAYMENT_WEBHOOK_SECRET", flush=True)
     
     if bot_token == 'your-telegram-bot-token':
-        print("ERROR: TELEGRAM_BOT_TOKEN not set. Set it as an environment variable.")
+        print("❌ ERROR: TELEGRAM_BOT_TOKEN not set. Set it as an environment variable or in .env file.", flush=True)
+        print("   The bot will not start without a valid token.", flush=True)
         return
     
     if not SERVICE_TOKEN:
-        print("WARNING: PAYMENT_WEBHOOK_SECRET not set. Webhook calls will fail.")
+        print("⚠️  WARNING: PAYMENT_WEBHOOK_SECRET not set. Webhook calls will fail.", flush=True)
     
-    # Create application
-    application = Application.builder().token(bot_token).build()
+    print("🔄 Creating Telegram application...", flush=True)
+    
+    try:
+        # Create application
+        application = Application.builder().token(bot_token).build()
+        print("✅ Application created successfully", flush=True)
+    except Exception as e:
+        print(f"❌ ERROR: Failed to create Telegram application", flush=True)
+        print(f"   Error: {str(e)}", flush=True)
+        print(f"   Check that your TELEGRAM_BOT_TOKEN is valid", flush=True)
+        raise
 
     # Add handlers for the ABA bot's payment alert messages
     # Use a more flexible filter that catches any message with payment indicators
@@ -310,4 +332,18 @@ def start_bot_listener():
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
-    start_bot_listener()
+    try:
+        start_bot_listener()
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Bot stopped by user (KeyboardInterrupt)")
+    except Exception as e:
+        print(f"\n\n❌ FATAL ERROR: Bot crashed!")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Keep container running so we can see the error
+        import time
+        print("\n⏳ Waiting 60 seconds before exit...")
+        time.sleep(60)
+        raise
