@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration from environment variables
-# Default webhook URL - can be overridden via environment variable
-# For Docker: https://admin-service.johnrak.online/api/payment/webhook
+# Default webhook URL - can be overridden via environment variable or docker-compose.yml
+# For Docker: https://admin.johnrak.online/api/payment/webhook
 # For local dev: http://localhost:8000/api/payment/webhook
-SERVICE_URL = os.getenv('PAYMENT_WEBHOOK_URL', 'https://admin-service.johnrak.online/api/payment/webhook')
+SERVICE_URL = os.getenv('PAYMENT_WEBHOOK_URL', 'https://admin.johnrak.online/api/payment/webhook')
 SERVICE_TOKEN = os.getenv('PAYMENT_WEBHOOK_SECRET', '')  # Webhook secret key from admin panel
 
 # ABA bot message format (including both Khmer Riel and USD currency support)
