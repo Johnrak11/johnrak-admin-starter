@@ -2,9 +2,56 @@
   <div class="space-y-6">
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Generate API Token</div>
+        <div class="text-lg font-semibold">Payment Webhook Secret</div>
         <div class="text-sm text-muted-foreground">
-          Create tokens for your Python bot to authenticate webhook calls
+          Use this secret key in your Telegram bot for payment webhook authentication
+        </div>
+      </template>
+
+      <div v-if="loadingWebhook" class="text-sm text-muted-foreground">
+        Loading...
+      </div>
+
+      <div v-else class="space-y-4">
+        <div
+          v-if="webhookSecret"
+          class="rounded-lg border border-blue-500/50 bg-blue-500/10 p-4"
+        >
+          <div class="text-sm font-medium text-blue-600 mb-2">
+            🔐 Payment Webhook Secret
+          </div>
+          <div class="font-mono text-sm break-all bg-background p-3 rounded border border-border mb-2">
+            {{ webhookSecret }}
+          </div>
+          <div class="text-xs text-muted-foreground space-y-1">
+            <div>• Use this secret in your Python bot's <code>.env</code> file:</div>
+            <div class="font-mono bg-muted p-2 rounded">
+              PAYMENT_WEBHOOK_SECRET={{ webhookSecret }}
+            </div>
+            <div>• The bot will send this secret as <code>?key=SECRET</code> in webhook requests</div>
+            <div>• Keep this secret secure and never share it publicly</div>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
+        >
+          <div class="text-sm font-medium text-yellow-600 mb-2">
+            ⚠️ Webhook Secret Not Configured
+          </div>
+          <div class="text-xs text-muted-foreground">
+            Go to <a href="/payment/config" class="text-primary underline cursor-pointer" @click.prevent="router.push('/payment/config')">Payment Config</a> and save your configuration to generate a webhook secret. The secret will appear here once configured.
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <Card>
+      <template #header>
+        <div class="text-lg font-semibold">API Access Tokens</div>
+        <div class="text-sm text-muted-foreground">
+          Generate API tokens for external applications to connect and access your admin panel
         </div>
       </template>
 
@@ -13,8 +60,11 @@
           <Label>Token Name</Label>
           <Input
             v-model="tokenForm.name"
-            placeholder="Python Bot Token"
+            placeholder="My App Integration"
           />
+          <p class="text-xs text-muted-foreground">
+            Give your token a descriptive name (e.g., "Mobile App", "Python Script", "Webhook Service")
+          </p>
         </div>
 
         <div class="space-y-2">
@@ -58,9 +108,9 @@
 
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Active Tokens</div>
+        <div class="text-lg font-semibold">Active API Tokens</div>
         <div class="text-sm text-muted-foreground">
-          Manage your API tokens
+          Manage and revoke API tokens for external applications
         </div>
       </template>
 
@@ -129,11 +179,13 @@ import { formatDistanceToNow } from "date-fns";
 
 const generating = ref(false);
 const loadingTokens = ref(true);
+const loadingWebhook = ref(true);
 const tokens = ref([]);
 const newToken = ref(null);
+const webhookSecret = ref(null);
 
 const tokenForm = reactive({
-  name: "Python Bot Token",
+  name: "My App Integration",
   expires_days: null,
 });
 
@@ -149,7 +201,7 @@ async function generate() {
   generating.value = true;
   try {
     const payload = {
-      name: tokenForm.name || "Python Bot Token",
+      name: tokenForm.name || "My App Integration",
     };
     if (tokenForm.expires_days) {
       payload.expires_days = tokenForm.expires_days;
@@ -157,13 +209,28 @@ async function generate() {
 
     const res = await api().post("/api/payment/tokens", payload);
     newToken.value = res.data;
-    tokenForm.name = "Python Bot Token";
+    tokenForm.name = "My App Integration";
     tokenForm.expires_days = null;
     await loadTokens();
   } catch (e) {
     alert(e?.response?.data?.error || "Failed to generate token");
   } finally {
     generating.value = false;
+  }
+}
+
+async function loadWebhookSecret() {
+  loadingWebhook.value = true;
+  try {
+    const res = await api().get("/api/payment/webhook-secret");
+    if (res.data?.webhook_secret) {
+      webhookSecret.value = res.data.webhook_secret;
+    }
+  } catch (e) {
+    // Webhook secret might not be configured yet
+    console.log("Webhook secret not available:", e);
+  } finally {
+    loadingWebhook.value = false;
   }
 }
 
@@ -187,5 +254,8 @@ async function revoke(token) {
   }
 }
 
-onMounted(loadTokens);
+onMounted(() => {
+  loadWebhookSecret();
+  loadTokens();
+});
 </script>

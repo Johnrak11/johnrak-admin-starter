@@ -97,6 +97,9 @@ Route::prefix('payment')->group(function () {
     Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
         Route::get('/config', [\App\Http\Controllers\PaymentController::class, 'getConfig']);
         Route::post('/config', [\App\Http\Controllers\PaymentController::class, 'saveConfig']);
+        Route::get('/webhook-secret', [\App\Http\Controllers\PaymentController::class, 'getWebhookSecret']);
+        Route::get('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'getMerchantInfo']);
+        Route::post('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'saveMerchantInfo']);
         Route::post('/test', [\App\Http\Controllers\PaymentController::class, 'testPayment']);
         Route::get('/transactions', [\App\Http\Controllers\PaymentController::class, 'listTransactions']);
         Route::get('/transactions/{transaction}', [\App\Http\Controllers\PaymentController::class, 'getTransaction']);

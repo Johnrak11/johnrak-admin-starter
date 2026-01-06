@@ -329,7 +329,33 @@ def start_bot_listener():
     print("💡 Tip: Send a test payment message to verify webhook calls\n")
     
     # Start polling for new messages (blocking call)
-    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+    # Note: drop_pending_updates=True will clear any pending updates
+    try:
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "Conflict" in error_msg or "getUpdates" in error_msg:
+            print("\n" + "="*60, flush=True)
+            print("❌ ERROR: Another bot instance is running!", flush=True)
+            print("="*60, flush=True)
+            print("This error means another instance of this bot is already running.", flush=True)
+            print("\nTo fix this:", flush=True)
+            print("1. Stop the other bot instance:", flush=True)
+            print("   - Check other terminal windows/tabs", flush=True)
+            print("   - Press Ctrl+C in the other terminal", flush=True)
+            print("2. If using Docker, stop the container:", flush=True)
+            print("   docker stop johnrak-admin-telegram-bot", flush=True)
+            print("3. Check for background processes:", flush=True)
+            print("   ps aux | grep listener.py", flush=True)
+            print("4. Kill any running instances:", flush=True)
+            print("   pkill -f listener.py", flush=True)
+            print("5. If you set up a webhook, remove it first:", flush=True)
+            print("   python3 -c \"from telegram import Bot; import os; from dotenv import load_dotenv; load_dotenv(); Bot(os.getenv('TELEGRAM_BOT_TOKEN')).delete_webhook()\"", flush=True)
+            print("="*60 + "\n", flush=True)
+        raise
 
 if __name__ == "__main__":
     try:

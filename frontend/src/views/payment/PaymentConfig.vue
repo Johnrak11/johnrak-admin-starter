@@ -23,13 +23,18 @@
         </div>
 
         <div class="space-y-2">
-          <Label>Bakong ID *</Label>
+          <Label>{{ form.provider === 'aba' ? 'ABA Merchant ID (MID)' : 'Bakong ID' }} *</Label>
           <Input
             v-model="form.bakong_id"
-            placeholder="Your Bakong account ID"
+            :placeholder="form.provider === 'aba' ? '126010616404196 (from ABA Merchant App)' : 'Your Bakong account ID'"
           />
           <p class="text-xs text-muted-foreground">
-            Your Bakong merchant account identifier
+            <span v-if="form.provider === 'aba'">
+              Your ABA Merchant ID (MID) from ABA Merchant App. Found on your QR codes as "MID: ..."
+            </span>
+            <span v-else>
+              Your Bakong merchant account identifier (phone number or Bakong ID)
+            </span>
           </p>
         </div>
 
@@ -49,21 +54,6 @@
             </div>
           </div>
           <Switch v-model="form.enabled" />
-        </div>
-
-        <div
-          v-if="webhookSecret"
-          class="rounded-lg border border-border bg-muted/30 p-4"
-        >
-          <div class="text-xs font-medium text-muted-foreground mb-2">
-            Webhook Secret (Save this - shown once)
-          </div>
-          <div class="font-mono text-sm break-all bg-background p-2 rounded border border-border">
-            {{ webhookSecret }}
-          </div>
-          <p class="text-xs text-muted-foreground mt-2">
-            Use this secret in your Python bot: <code>?key=SECRET</code>
-          </p>
         </div>
 
         <div class="flex justify-end">
@@ -87,7 +77,6 @@ import Switch from "../../components/ui/Switch.vue";
 
 const loading = ref(true);
 const saving = ref(false);
-const webhookSecret = ref(null);
 
 const form = reactive({
   provider: "bakong",
@@ -113,10 +102,7 @@ async function load() {
 async function save() {
   saving.value = true;
   try {
-    const res = await api().post("/api/payment/config", form);
-    if (res.data.webhook_secret) {
-      webhookSecret.value = res.data.webhook_secret;
-    }
+    await api().post("/api/payment/config", form);
     alert("Configuration saved!");
   } catch (e) {
     alert(e?.response?.data?.error || "Failed to save");

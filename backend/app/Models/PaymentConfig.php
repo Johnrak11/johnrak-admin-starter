@@ -14,12 +14,18 @@ class PaymentConfig extends Model
         'provider',
         'bakong_id',
         'merchant_name',
+        'merchant_city',
+        'merchant_phone',
+        'merchant_email',
+        'merchant_address',
+        'provider_merchant_info',
         'webhook_secret',
         'enabled',
     ];
 
     protected $casts = [
         'enabled' => 'boolean',
+        'provider_merchant_info' => 'array',
     ];
 
     public function user()

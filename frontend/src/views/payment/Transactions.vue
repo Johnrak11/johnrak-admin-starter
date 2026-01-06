@@ -41,16 +41,87 @@
         <p class="text-sm text-muted-foreground">No transactions found</p>
       </div>
 
-      <div v-else class="space-y-3">
-        <div
-          v-for="tx in transactions"
-          :key="tx.id"
-          class="rounded-lg border border-border bg-muted/30 p-4"
-        >
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-3 mb-2">
-                <div class="text-sm font-medium">Order: {{ tx.order_id }}</div>
+      <template v-else>
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-border">
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Order ID</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Payer</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Transaction ID</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Created</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Paid At</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="tx in transactions"
+                :key="tx.id"
+                class="border-b border-border hover:bg-muted/30 transition-colors"
+              >
+                <td class="py-3 px-4 text-sm">
+                  <span class="font-medium">{{ tx.order_id || 'N/A' }}</span>
+                </td>
+                <td class="py-3 px-4 text-sm">
+                  <span class="font-medium">${{ tx.amount }}</span>
+                  <span class="text-muted-foreground text-xs ml-1">{{ tx.currency }}</span>
+                </td>
+                <td class="py-3 px-4">
+                  <span
+                    :class="{
+                      'bg-green-500/20 text-green-600': tx.status === 'paid',
+                      'bg-yellow-500/20 text-yellow-600': tx.status === 'pending',
+                      'bg-red-500/20 text-red-600':
+                        tx.status === 'failed' || tx.status === 'error',
+                      'bg-gray-500/20 text-gray-600': tx.status === 'expired',
+                    }"
+                    class="px-2 py-1 rounded text-xs font-medium"
+                  >
+                    {{ tx.status.toUpperCase() }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-sm">
+                  <div v-if="tx.payer_name">
+                    <div class="font-medium">{{ tx.payer_name }}</div>
+                    <div v-if="tx.payer_phone" class="text-xs text-muted-foreground">
+                      {{ tx.payer_phone }}
+                    </div>
+                  </div>
+                  <span v-else class="text-muted-foreground">—</span>
+                </td>
+                <td class="py-3 px-4 text-sm">
+                  <span v-if="tx.transaction_id" class="font-mono text-xs">
+                    {{ tx.transaction_id }}
+                  </span>
+                  <span v-else class="text-muted-foreground">—</span>
+                </td>
+                <td class="py-3 px-4 text-sm text-muted-foreground">
+                  {{ formatDate(tx.created_at) }}
+                </td>
+                <td class="py-3 px-4 text-sm text-muted-foreground">
+                  <span v-if="tx.paid_at">{{ formatDate(tx.paid_at) }}</span>
+                  <span v-else>—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="md:hidden space-y-3">
+          <div
+            v-for="tx in transactions"
+            :key="tx.id"
+            class="rounded-lg border border-border bg-muted/30 p-4"
+          >
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-medium">
+                  {{ tx.order_id || 'No Order ID' }}
+                </div>
                 <span
                   :class="{
                     'bg-green-500/20 text-green-600': tx.status === 'paid',
@@ -64,20 +135,23 @@
                   {{ tx.status.toUpperCase() }}
                 </span>
               </div>
-              <div class="text-sm text-muted-foreground space-y-1">
-                <div>Amount: ${{ tx.amount }} {{ tx.currency }}</div>
+              <div class="text-lg font-semibold">
+                ${{ tx.amount }} <span class="text-sm text-muted-foreground">{{ tx.currency }}</span>
+              </div>
+              <div class="space-y-1 text-sm text-muted-foreground">
                 <div v-if="tx.payer_name">
-                  Payer: {{ tx.payer_name }}
+                  <span class="font-medium">Payer:</span> {{ tx.payer_name }}
                   <span v-if="tx.payer_phone"> ({{ tx.payer_phone }})</span>
                 </div>
                 <div v-if="tx.transaction_id">
-                  TX ID: <span class="font-mono text-xs">{{ tx.transaction_id }}</span>
+                  <span class="font-medium">TX ID:</span>
+                  <span class="font-mono text-xs ml-1">{{ tx.transaction_id }}</span>
                 </div>
                 <div>
-                  Created: {{ formatDate(tx.created_at) }}
+                  <span class="font-medium">Created:</span> {{ formatDate(tx.created_at) }}
                 </div>
                 <div v-if="tx.paid_at">
-                  Paid: {{ formatDate(tx.paid_at) }}
+                  <span class="font-medium">Paid:</span> {{ formatDate(tx.paid_at) }}
                 </div>
               </div>
             </div>
@@ -112,7 +186,7 @@
             </Button>
           </div>
         </div>
-      </div>
+      </template>
     </Card>
   </div>
 </template>

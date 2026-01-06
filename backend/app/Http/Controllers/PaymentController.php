@@ -34,6 +34,76 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function getWebhookSecret(Request $request)
+    {
+        $config = PaymentConfig::where('user_id', $request->user()->id)->first();
+
+        if (!$config || empty($config->webhook_secret)) {
+            return response()->json([
+                'webhook_secret' => null,
+                'webhook_configured' => false,
+            ]);
+        }
+
+        return response()->json([
+            'webhook_secret' => $config->webhook_secret,
+            'webhook_configured' => true,
+        ]);
+    }
+
+    public function getMerchantInfo(Request $request)
+    {
+        $config = PaymentConfig::where('user_id', $request->user()->id)->first();
+
+        $providerMerchantInfo = $config->provider_merchant_info ?? [];
+
+        // Default values for each provider
+        $defaultInfo = [
+            'merchant_city' => 'Phnom Penh',
+            'merchant_phone' => null,
+            'merchant_email' => null,
+            'merchant_address' => null,
+        ];
+
+        return response()->json([
+            'merchant_info' => [
+                'aba' => array_merge($defaultInfo, $providerMerchantInfo['aba'] ?? []),
+                'bakong' => array_merge($defaultInfo, $providerMerchantInfo['bakong'] ?? []),
+            ],
+        ]);
+    }
+
+    public function saveMerchantInfo(Request $request)
+    {
+        $validated = $request->validate([
+            'provider' => ['required', 'in:aba,bakong'],
+            'merchant_city' => ['nullable', 'string', 'max:15'], // EMV standard max 15 chars
+            'merchant_phone' => ['nullable', 'string', 'max:50'],
+            'merchant_email' => ['nullable', 'email', 'max:200'],
+            'merchant_address' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
+
+        $provider = $validated['provider'];
+        $providerMerchantInfo = $config->provider_merchant_info ?? [];
+
+        // Update merchant info for the specific provider
+        $providerMerchantInfo[$provider] = [
+            'merchant_city' => $validated['merchant_city'] ?? 'Phnom Penh',
+            'merchant_phone' => $validated['merchant_phone'] ?? null,
+            'merchant_email' => $validated['merchant_email'] ?? null,
+            'merchant_address' => $validated['merchant_address'] ?? null,
+        ];
+
+        $config->provider_merchant_info = $providerMerchantInfo;
+        $config->save();
+
+        return response()->json([
+            'merchant_info' => $providerMerchantInfo[$provider],
+        ]);
+    }
+
     public function saveConfig(Request $request)
     {
         $validated = $request->validate([
@@ -55,7 +125,8 @@ class PaymentController extends Controller
 
         return response()->json([
             'config' => $config->only(['provider', 'bakong_id', 'merchant_name', 'enabled']),
-            'webhook_secret' => $config->webhook_secret, // Show once
+            // Webhook secret is now available via GET /api/payment/webhook-secret
+            // or view it on /api/tokens page
         ]);
     }
 
@@ -87,6 +158,12 @@ class PaymentController extends Controller
             'expires_at' => now()->addHours(24),
         ]);
 
+        // Get provider-specific merchant info
+        $provider = $config->provider ?? 'bakong';
+        $providerMerchantInfo = $config->provider_merchant_info ?? [];
+        $merchantInfo = $providerMerchantInfo[$provider] ?? [];
+        $merchantCity = $merchantInfo['merchant_city'] ?? $config->merchant_city ?? 'Phnom Penh';
+
         // Generate KHQR
         try {
             $khqrString = $khqrService->generateKhqrString(
@@ -94,10 +171,11 @@ class PaymentController extends Controller
                 (float) $validated['amount'],
                 $validated['order_id'],
                 $config->merchant_name,
-                $config->provider ?? 'bakong' // Pass the provider (aba or bakong)
+                $provider, // Pass the provider (aba or bakong)
+                $merchantCity // Pass merchant city from provider-specific config
             );
         } catch (\Exception $e) {
-            \Log::error('KHQR generation failed', ['error' => $e->getMessage()]);
+            Log::error('KHQR generation failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to generate QR code: ' . $e->getMessage()], 500);
         }
 
@@ -254,7 +332,7 @@ class PaymentController extends Controller
 
             // Find the pending transaction by order_id (if provided) or by transaction_id
             $transaction = null;
-            
+
             if (!empty($validated['order_id'])) {
                 // Try to find by order_id first
                 $transaction = Transaction::where('order_id', $validated['order_id'])
@@ -262,7 +340,7 @@ class PaymentController extends Controller
                     ->lockForUpdate()
                     ->first();
             }
-            
+
             // If not found by order_id, try to find by transaction_id (for payments without order_id)
             if (!$transaction) {
                 $transaction = Transaction::where('transaction_id', $validated['transaction_id'])
@@ -270,7 +348,7 @@ class PaymentController extends Controller
                     ->lockForUpdate()
                     ->first();
             }
-            
+
             // If still not found, create a new transaction record (for payments without order_id)
             if (!$transaction) {
                 if (empty($validated['order_id'])) {
@@ -331,18 +409,18 @@ class PaymentController extends Controller
                 'paid_at' => now(),
                 'metadata' => array_merge($transaction->metadata ?? [], $validated['metadata'] ?? []),
             ];
-            
+
             // Update order_id if it was null and now we have it
             if (empty($transaction->order_id) && !empty($validated['order_id'])) {
                 $updateData['order_id'] = $validated['order_id'];
             }
-            
+
             // Update amount if transaction was just created (for payments without order_id)
             if ($transaction->wasRecentlyCreated) {
                 $updateData['amount'] = $validated['amount'];
                 $updateData['currency'] = $validated['currency'] ?? 'USD';
             }
-            
+
             $transaction->update($updateData);
 
             Log::info('Payment webhook: Transaction paid', [

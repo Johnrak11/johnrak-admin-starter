@@ -225,9 +225,9 @@ const navGroups = [
     label: "Payment Gateway",
     items: [
       { to: "/payment/config", label: "Payment Config" },
-      { to: "/payment/test", label: "Test Payment" },
+      { to: "/payment/merchant", label: "Merchant Info" },
+      { to: "/payment/generate", label: "Generate QR" },
       { to: "/payment/transactions", label: "Transactions" },
-      { to: "/payment/tokens", label: "Generate Token" },
     ],
   },
   {
@@ -237,6 +237,7 @@ const navGroups = [
       { to: "/ai/settings", label: "Gemini Configuration" },
       { to: "/security", label: "Security & Tokens" },
       { to: "/security/backup", label: "Backups" },
+      { to: "/api/tokens", label: "API Access Tokens" },
     ],
   },
 ];
