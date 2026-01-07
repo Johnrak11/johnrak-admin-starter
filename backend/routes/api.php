@@ -90,14 +90,13 @@ Route::prefix('client')->group(function () {
 });
 
 Route::prefix('payment')->group(function () {
-    // Public webhook (no auth, but requires secret key)
+    // Public webhook (auth via API Access Token in Authorization: Bearer <token>)
     Route::post('/webhook', [\App\Http\Controllers\PaymentController::class, 'webhook'])->middleware('throttle:payment-webhook');
     
     // Protected routes (owner only)
     Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
         Route::get('/config', [\App\Http\Controllers\PaymentController::class, 'getConfig']);
         Route::post('/config', [\App\Http\Controllers\PaymentController::class, 'saveConfig']);
-        Route::get('/webhook-secret', [\App\Http\Controllers\PaymentController::class, 'getWebhookSecret']);
         Route::get('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'getMerchantInfo']);
         Route::post('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'saveMerchantInfo']);
         Route::post('/test', [\App\Http\Controllers\PaymentController::class, 'testPayment']);

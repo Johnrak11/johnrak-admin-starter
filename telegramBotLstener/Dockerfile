@@ -17,7 +17,7 @@ COPY . /app
 # Run the bot when the container starts
 # Required environment variables (set via .env file or docker-compose):
 # - TELEGRAM_BOT_TOKEN: Your Telegram bot token from @BotFather
-# - PAYMENT_WEBHOOK_SECRET: The webhook secret from admin panel
+# - PAYMENT_API_TOKEN: API access token (Authorization: Bearer ...)
 # Optional:
 # - PAYMENT_WEBHOOK_URL: Your webhook URL (default: https://admin-service.johnrak.online/api/payment/webhook)
 # Use unbuffered Python output to see logs immediately

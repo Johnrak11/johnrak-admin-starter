@@ -3,6 +3,7 @@
 ## Overview
 
 The Payment Gateway feature allows you to:
+
 - Generate KHQR codes for Bakong payments
 - Test payments with QR code generation
 - Track all transactions with status
@@ -19,6 +20,7 @@ php artisan migrate
 ```
 
 This creates three tables:
+
 - `payment_configs` - Store payment configuration
 - `transactions` - Store all payment transactions
 - `payment_tokens` - Store API tokens for Python bot
@@ -46,7 +48,6 @@ Update your `listener.py` environment variables:
 ```bash
 export TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
 export PAYMENT_WEBHOOK_URL="https://admin.johnrak.online/api/payment/webhook"
-export PAYMENT_WEBHOOK_SECRET="your-webhook-secret-from-step-2"
 ```
 
 Or in Docker:
@@ -55,7 +56,6 @@ Or in Docker:
 environment:
   - TELEGRAM_BOT_TOKEN=your-token
   - PAYMENT_WEBHOOK_URL=https://admin.johnrak.online/api/payment/webhook
-  - PAYMENT_WEBHOOK_SECRET=your-secret
 ```
 
 ### 5. Test Payment Flow
@@ -78,7 +78,7 @@ environment:
 4. **ABA Bot Notification**: ABA bot sends message to Telegram group
 5. **Python Listener**: Extracts Order ID from message remark
 6. **Webhook Call**: Python bot calls `/api/payment/webhook` with payment data
-7. **Backend Processing**: 
+7. **Backend Processing**:
    - Validates webhook secret
    - Checks for duplicate transactions (idempotency)
    - Locks database row to prevent race conditions
@@ -135,6 +135,7 @@ The updated `listener.py`:
 ### Regex Patterns
 
 The bot uses multiple regex patterns to extract Order ID:
+
 - Main pattern: Captures remark from ABA message
 - Alternative patterns: Looks for "Remark:", "Bill Number:", etc.
 - Fallback patterns: Common order ID formats (ORDER-123, etc.)

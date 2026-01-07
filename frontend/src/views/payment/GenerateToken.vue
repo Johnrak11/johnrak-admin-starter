@@ -2,48 +2,20 @@
   <div class="space-y-6">
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Payment Webhook Secret</div>
+        <div class="text-lg font-semibold">Telegram Bot Authentication</div>
         <div class="text-sm text-muted-foreground">
-          Use this secret key in your Telegram bot for payment webhook authentication
+          Use an API Access Token (below) in your bot as <code>PAYMENT_API_TOKEN</code>
         </div>
       </template>
 
-      <div v-if="loadingWebhook" class="text-sm text-muted-foreground">
-        Loading...
-      </div>
-
-      <div v-else class="space-y-4">
-        <div
-          v-if="webhookSecret"
-          class="rounded-lg border border-blue-500/50 bg-blue-500/10 p-4"
-        >
-          <div class="text-sm font-medium text-blue-600 mb-2">
-            🔐 Payment Webhook Secret
-          </div>
-          <div class="font-mono text-sm break-all bg-background p-3 rounded border border-border mb-2">
-            {{ webhookSecret }}
-          </div>
-          <div class="text-xs text-muted-foreground space-y-1">
-            <div>• Use this secret in your Python bot's <code>.env</code> file:</div>
-            <div class="font-mono bg-muted p-2 rounded">
-              PAYMENT_WEBHOOK_SECRET={{ webhookSecret }}
-            </div>
-            <div>• The bot will send this secret as <code>?key=SECRET</code> in webhook requests</div>
-            <div>• Keep this secret secure and never share it publicly</div>
-          </div>
+      <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm text-muted-foreground">
+        <div class="font-medium text-foreground">How to connect the bot</div>
+        <div>1) Create a token below (example name: <b>Telegram Bot</b>)</div>
+        <div>2) Put it in your bot environment:</div>
+        <div class="font-mono text-xs bg-background p-2 rounded border border-border">
+          PAYMENT_API_TOKEN=YOUR_TOKEN_HERE
         </div>
-
-        <div
-          v-else
-          class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
-        >
-          <div class="text-sm font-medium text-yellow-600 mb-2">
-            ⚠️ Webhook Secret Not Configured
-          </div>
-          <div class="text-xs text-muted-foreground">
-            Go to <a href="/payment/config" class="text-primary underline cursor-pointer" @click.prevent="router.push('/payment/config')">Payment Config</a> and save your configuration to generate a webhook secret. The secret will appear here once configured.
-          </div>
-        </div>
+        <div>3) Bot will send <code>Authorization: Bearer &lt;token&gt;</code> to the webhook.</div>
       </div>
     </Card>
 
@@ -94,6 +66,9 @@
           </div>
           <div class="font-mono text-sm break-all bg-background p-3 rounded border border-border mb-2">
             {{ newToken.token }}
+          </div>
+          <div class="mt-2 text-xs text-muted-foreground">
+            Bot env: <code>PAYMENT_API_TOKEN={{ newToken.token }}</code>
           </div>
           <div class="text-xs text-muted-foreground">
             <div>Name: {{ newToken.name }}</div>
@@ -179,10 +154,8 @@ import { formatDistanceToNow } from "date-fns";
 
 const generating = ref(false);
 const loadingTokens = ref(true);
-const loadingWebhook = ref(true);
 const tokens = ref([]);
 const newToken = ref(null);
-const webhookSecret = ref(null);
 
 const tokenForm = reactive({
   name: "My App Integration",
@@ -219,21 +192,6 @@ async function generate() {
   }
 }
 
-async function loadWebhookSecret() {
-  loadingWebhook.value = true;
-  try {
-    const res = await api().get("/api/payment/webhook-secret");
-    if (res.data?.webhook_secret) {
-      webhookSecret.value = res.data.webhook_secret;
-    }
-  } catch (e) {
-    // Webhook secret might not be configured yet
-    console.log("Webhook secret not available:", e);
-  } finally {
-    loadingWebhook.value = false;
-  }
-}
-
 async function loadTokens() {
   loadingTokens.value = true;
   try {
@@ -255,7 +213,6 @@ async function revoke(token) {
 }
 
 onMounted(() => {
-  loadWebhookSecret();
   loadTokens();
 });
 </script>

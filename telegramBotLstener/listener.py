@@ -15,7 +15,8 @@ load_dotenv()
 # For Docker: https://admin.johnrak.online/api/payment/webhook
 # For local dev: http://localhost:8000/api/payment/webhook
 SERVICE_URL = os.getenv('PAYMENT_WEBHOOK_URL', 'https://admin.johnrak.online/api/payment/webhook')
-SERVICE_TOKEN = os.getenv('PAYMENT_WEBHOOK_SECRET', '')  # Webhook secret key from admin panel
+# Auth: API Access Token (from /api/tokens page)
+API_TOKEN = os.getenv('PAYMENT_API_TOKEN', '')
 
 # ABA bot message format (including both Khmer Riel and USD currency support)
 # Updated regex to match actual ABA message formats
@@ -78,17 +79,16 @@ def send_to_service(payment_data):
     """
     Sends the payment data to the webhook endpoint
     """
-    if not SERVICE_TOKEN:
-        print("ERROR: SERVICE_TOKEN not configured. Set PAYMENT_WEBHOOK_SECRET environment variable.")
+    if not API_TOKEN:
+        print("ERROR: API token not configured. Set PAYMENT_API_TOKEN environment variable.", flush=True)
         return None
     
     headers = {
         'Content-Type': 'application/json',
-        'X-Webhook-Secret': SERVICE_TOKEN  # Send secret in header
+        'Authorization': f'Bearer {API_TOKEN}',
     }
     
-    # Also include in query string as backup
-    url = f"{SERVICE_URL}?key={SERVICE_TOKEN}"
+    url = SERVICE_URL
     
     print(f"\n{'='*60}")
     print(f"🌐 WEBHOOK CALL ATTEMPT")
@@ -197,12 +197,12 @@ async def process_payment_alert(update: Update, context: ContextTypes.DEFAULT_TY
         print("   Payment will be processed using Transaction ID only")
     
     # Prepare payment data
-    payment_data = {
+        payment_data = {
         "amount": float(amount),
-        "currency": currency,
+            "currency": currency,
         "transaction_id": transaction_id,
-        "payer_name": payer_name,
-        "payer_phone": payer_phone,
+            "payer_name": payer_name,
+            "payer_phone": payer_phone,
         "metadata": {
             "payment_time": payment_time,
             "location": location,
@@ -244,9 +244,9 @@ async def process_payment_alert(update: Update, context: ContextTypes.DEFAULT_TY
     else:
         print(f"\n❌ FAILED: Could not send payment data to webhook.")
         print(f"   Check your backend server is running at: {SERVICE_URL}")
-        print(f"   Verify webhook secret matches in admin panel")
+        print(f"   Verify PAYMENT_API_TOKEN is set and valid (from /api/tokens)")
         print(f"   Check backend logs for errors")
-    
+
     print(f"{'='*60}\n")
 
 async def process_custom_bot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -282,7 +282,7 @@ def start_bot_listener():
     print(f"🤖 TELEGRAM BOT LISTENER STARTING", flush=True)
     print(f"{'='*60}", flush=True)
     print(f"Webhook URL: {SERVICE_URL}", flush=True)
-    print(f"Webhook Secret: {'✅ Set' if SERVICE_TOKEN else '❌ NOT SET'}", flush=True)
+    print(f"API Token: {'✅ Set' if API_TOKEN else '❌ NOT SET'}", flush=True)
     print(f"Bot Token: {'✅ Set' if bot_token != 'your-telegram-bot-token' else '❌ NOT SET'}", flush=True)
     print(f"{'='*60}\n", flush=True)
     
@@ -290,15 +290,15 @@ def start_bot_listener():
     env_file_path = os.path.join(os.path.dirname(__file__), '.env')
     if not os.path.exists(env_file_path):
         print(f"⚠️  WARNING: .env file not found at {env_file_path}", flush=True)
-        print(f"   Make sure to create .env file with TELEGRAM_BOT_TOKEN and PAYMENT_WEBHOOK_SECRET", flush=True)
+        print(f"   Make sure to create .env file with TELEGRAM_BOT_TOKEN and PAYMENT_API_TOKEN", flush=True)
     
     if bot_token == 'your-telegram-bot-token':
         print("❌ ERROR: TELEGRAM_BOT_TOKEN not set. Set it as an environment variable or in .env file.", flush=True)
         print("   The bot will not start without a valid token.", flush=True)
         return
     
-    if not SERVICE_TOKEN:
-        print("⚠️  WARNING: PAYMENT_WEBHOOK_SECRET not set. Webhook calls will fail.", flush=True)
+    if not API_TOKEN:
+        print("⚠️  WARNING: PAYMENT_API_TOKEN not set. Webhook calls will fail.", flush=True)
     
     print("🔄 Creating Telegram application...", flush=True)
     
@@ -323,6 +323,41 @@ def start_bot_listener():
 
     # Add handlers for your custom bot messages (catch-all, but lower priority)
     application.add_handler(MessageHandler(filters.TEXT, process_custom_bot_message))
+
+    async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Telegram error handler. This prevents huge 'No error handlers are registered' traces.
+        Most common case in local dev: bot token is running in 2 places (Conflict/getUpdates).
+        """
+        err = context.error
+        err_msg = str(err)
+
+        if "Conflict" in err_msg or "getUpdates" in err_msg:
+            print("\n" + "="*60, flush=True)
+            print("❌ ERROR: Another bot instance is running!", flush=True)
+            print("="*60, flush=True)
+            print("This means the same TELEGRAM_BOT_TOKEN is polling in another process/container.", flush=True)
+            print("\nFix:", flush=True)
+            print("- Stop the other instance (Docker/local). Only ONE can run at a time.", flush=True)
+            print("- Docker: docker ps | grep telegram  &&  docker stop johnrak-admin-telegram-bot", flush=True)
+            print("- Local: ps aux | grep listener.py  &&  pkill -f listener.py", flush=True)
+            print("="*60 + "\n", flush=True)
+
+            # Ask the polling loop to stop.
+            try:
+                context.application.stop_running()
+            except Exception:
+                pass
+            return
+
+        print("\n" + "="*60, flush=True)
+        print("❌ Unhandled telegram error", flush=True)
+        print("="*60, flush=True)
+        import traceback
+        traceback.print_exception(type(err), err, err.__traceback__)
+        print("="*60 + "\n", flush=True)
+
+    application.add_error_handler(_on_error)
 
     print("✅ Bot listener started. Waiting for messages...")
     print("📱 Listening for ABA payment notifications...")
@@ -352,8 +387,6 @@ def start_bot_listener():
             print("   ps aux | grep listener.py", flush=True)
             print("4. Kill any running instances:", flush=True)
             print("   pkill -f listener.py", flush=True)
-            print("5. If you set up a webhook, remove it first:", flush=True)
-            print("   python3 -c \"from telegram import Bot; import os; from dotenv import load_dotenv; load_dotenv(); Bot(os.getenv('TELEGRAM_BOT_TOKEN')).delete_webhook()\"", flush=True)
             print("="*60 + "\n", flush=True)
         raise
 

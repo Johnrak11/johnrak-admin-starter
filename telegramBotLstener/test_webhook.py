@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SERVICE_URL = os.getenv('PAYMENT_WEBHOOK_URL', 'http://localhost:8000/api/payment/webhook')
-SERVICE_TOKEN = os.getenv('PAYMENT_WEBHOOK_SECRET', '')
+API_TOKEN = os.getenv('PAYMENT_API_TOKEN', '')
 
 def test_webhook():
     """Test the webhook endpoint with sample data"""
@@ -21,11 +21,12 @@ def test_webhook():
     print(f"🧪 TESTING WEBHOOK CONNECTION")
     print(f"{'='*60}")
     print(f"URL: {SERVICE_URL}")
-    print(f"Secret: {'✅ Set' if SERVICE_TOKEN else '❌ NOT SET'}")
+    print(f"API Token: {'✅ Set' if API_TOKEN else '❌ NOT SET'}")
     print(f"{'='*60}\n")
     
-    if not SERVICE_TOKEN:
-        print("❌ ERROR: PAYMENT_WEBHOOK_SECRET not set in .env file")
+    if not API_TOKEN:
+        print("❌ ERROR: PAYMENT_API_TOKEN not set in .env file")
+        print("   Generate one from /api/tokens and set it in telegramBotLstener/.env")
         return False
     
     # Sample payment data
@@ -46,17 +47,15 @@ def test_webhook():
     
     headers = {
         'Content-Type': 'application/json',
-        'X-Webhook-Secret': SERVICE_TOKEN
+        'Authorization': f'Bearer {API_TOKEN}',
     }
-    
-    url = f"{SERVICE_URL}?key={SERVICE_TOKEN}"
     
     print(f"📤 Sending test request...")
     print(f"   Payload: {json.dumps(test_data, indent=2)}")
     print()
     
     try:
-        response = requests.post(url, json=test_data, headers=headers, timeout=10)
+        response = requests.post(SERVICE_URL, json=test_data, headers=headers, timeout=10)
         
         print(f"📥 Response Status: {response.status_code}")
         print(f"📥 Response Headers: {dict(response.headers)}")
@@ -72,8 +71,8 @@ def test_webhook():
                 pass
             return True
         elif response.status_code == 401:
-            print("❌ ERROR: Unauthorized - Webhook secret is incorrect")
-            print("   Check PAYMENT_WEBHOOK_SECRET in .env matches admin panel")
+            print("❌ ERROR: Unauthorized - API token is incorrect/expired")
+            print("   Check PAYMENT_API_TOKEN in .env (generate from /api/tokens)")
             return False
         elif response.status_code == 404:
             # 404 with "Transaction not found" means endpoint works but transaction doesn't exist
@@ -82,7 +81,7 @@ def test_webhook():
             if "transaction not found" in error_msg or "not found" in error_msg:
                 print("✅ SUCCESS: Webhook endpoint is reachable!")
                 print("   The 404 is expected - test transaction doesn't exist in database")
-                print("   This means your webhook URL and secret are correct!")
+                print("   This means your webhook URL is correct and auth worked!")
                 print(f"   Response: {response.text}")
                 return True
             else:

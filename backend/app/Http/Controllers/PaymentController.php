@@ -34,23 +34,6 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function getWebhookSecret(Request $request)
-    {
-        $config = PaymentConfig::where('user_id', $request->user()->id)->first();
-
-        if (!$config || empty($config->webhook_secret)) {
-            return response()->json([
-                'webhook_secret' => null,
-                'webhook_configured' => false,
-            ]);
-        }
-
-        return response()->json([
-            'webhook_secret' => $config->webhook_secret,
-            'webhook_configured' => true,
-        ]);
-    }
-
     public function getMerchantInfo(Request $request)
     {
         $config = PaymentConfig::where('user_id', $request->user()->id)->first();
@@ -115,18 +98,11 @@ class PaymentController extends Controller
 
         $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
 
-        // Generate webhook secret if not exists
-        if (empty($config->webhook_secret)) {
-            $config->webhook_secret = Str::random(32);
-        }
-
         $config->fill($validated);
         $config->save();
 
         return response()->json([
             'config' => $config->only(['provider', 'bakong_id', 'merchant_name', 'enabled']),
-            // Webhook secret is now available via GET /api/payment/webhook-secret
-            // or view it on /api/tokens page
         ]);
     }
 
@@ -297,14 +273,28 @@ class PaymentController extends Controller
      */
     public function webhook(Request $request)
     {
-        // Validate webhook secret
-        $secret = $request->query('key') ?? $request->header('X-Webhook-Secret');
-        $config = PaymentConfig::where('webhook_secret', $secret)->first();
-
-        if (!$config || !$secret) {
-            Log::warning('Payment webhook: Invalid secret', ['ip' => $request->ip()]);
+        // Auth: API Access Token (Bearer)
+        // Bot must send: Authorization: Bearer <token>
+        $bearer = $request->bearerToken();
+        if (!$bearer) {
+            Log::warning('Payment webhook: Missing bearer token', ['ip' => $request->ip()]);
             return response()->json(['error' => 'Unauthorized'], 401);
         }
+
+        $paymentToken = PaymentToken::where('token', $bearer)->first();
+        if (!$paymentToken || !$paymentToken->isValid()) {
+            Log::warning('Payment webhook: Invalid/expired token', ['ip' => $request->ip()]);
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $paymentToken->last_used_at = now();
+        $paymentToken->save();
+
+        // Resolve the owner config from the token owner
+        $config = PaymentConfig::firstOrCreate(
+            ['user_id' => $paymentToken->user_id],
+            ['provider' => 'bakong', 'enabled' => true]
+        );
 
         $validated = $request->validate([
             'order_id' => ['nullable', 'string'], // Order ID is optional - can be null

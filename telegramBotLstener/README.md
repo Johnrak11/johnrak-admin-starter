@@ -25,9 +25,9 @@ Create a `.env` file in this directory with the following variables:
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 
-# Payment Webhook Configuration
-# Get this from: Payment Gateway → Payment Config (after saving, you'll see the webhook secret)
-PAYMENT_WEBHOOK_SECRET=your-webhook-secret-from-admin-panel
+# Payment Webhook Authentication (API Access Token)
+# Generate from: System → API Access Tokens  (route: /api/tokens)
+PAYMENT_API_TOKEN=your-api-access-token
 
 # Payment Webhook URL
 # Default: https://admin.johnrak.online/api/payment/webhook
@@ -42,10 +42,10 @@ PAYMENT_WEBHOOK_URL=https://admin.johnrak.online/api/payment/webhook
 2. Create a new bot or use existing bot
 3. Copy the bot token
 
-#### Webhook Secret
-1. Go to your admin panel: **Payment Gateway → Payment Config**
-2. Enter your Bakong ID and save
-3. Copy the **Webhook Secret** that appears (shown only once!)
+#### API Access Token
+1. Go to your admin panel: **System → API Access Tokens** (`/api/tokens`)
+2. Create a token (e.g. “Telegram Bot”)
+3. Copy the token value and set it as `PAYMENT_API_TOKEN`
 
 ### 5. Test Webhook Connection (Optional but Recommended)
 
@@ -57,7 +57,7 @@ python test_webhook.py
 
 This will:
 - Test connectivity to your webhook URL
-- Verify the webhook secret is correct
+- Verify the API token is correct
 - Send a sample payment data to check if it works
 
 ### 6. Run the Bot
@@ -87,7 +87,7 @@ The Telegram bot is integrated into the main `docker-compose.yml`. To set it up:
 1. **Create `.env` file** in `telegramBotLstener/` directory:
 ```env
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
-PAYMENT_WEBHOOK_SECRET=your-webhook-secret-from-admin-panel
+PAYMENT_API_TOKEN=your-api-access-token
 # PAYMENT_WEBHOOK_URL is set automatically in docker-compose.yml
 ```
 
@@ -129,7 +129,7 @@ docker run -d --name payment-listener --env-file .env payment-listener
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Your Telegram bot token from @BotFather |
-| `PAYMENT_WEBHOOK_SECRET` | Yes | Webhook secret from admin panel |
+| `PAYMENT_API_TOKEN` | Yes | API access token (use as `Authorization: Bearer ...`) |
 | `PAYMENT_WEBHOOK_URL` | No | Webhook URL (default: https://admin.johnrak.online/api/payment/webhook) |
 
 ## Troubleshooting
@@ -139,7 +139,7 @@ docker run -d --name payment-listener --env-file .env payment-listener
 - Verify the token is valid by testing with @BotFather
 
 ### Webhook Calls Failing
-- Verify `PAYMENT_WEBHOOK_SECRET` matches the one in admin panel
+- Verify `PAYMENT_API_TOKEN` is valid (generate from `/api/tokens`)
 - Check that `PAYMENT_WEBHOOK_URL` is correct
 - Check network connectivity to your admin panel
 
