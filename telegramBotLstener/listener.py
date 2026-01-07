@@ -128,9 +128,14 @@ async def process_payment_alert(update: Update, context: ContextTypes.DEFAULT_TY
     Process the message from ABA bot and send payment details to the webhook.
     """
     message_text = update.message.text
+    sender = update.message.from_user
+    sender_info = f"@{sender.username}" if sender.username else f"ID:{sender.id}"
+    
     print(f"\n{'='*60}")
     print(f"📨 PAYMENT MESSAGE RECEIVED")
     print(f"{'='*60}")
+    print(f"From: {sender.first_name} {sender_info}")
+    print(f"Is Bot: {sender.is_bot}")
     print(f"Message: {message_text}")
     print(f"{'='*60}\n")
     
@@ -313,16 +318,17 @@ def start_bot_listener():
         raise
 
     # Add handlers for the ABA bot's payment alert messages
-    # Use a more flexible filter that catches any message with payment indicators
-    payment_filter = filters.TEXT & (
+    # IMPORTANT: filters.TEXT excludes bot messages by default, so we use filters.ALL
+    # to catch messages from @PayWayByABA_bot and other payment bots
+    payment_filter = filters.ALL & (
         filters.Regex(r'\$\d+\.\d{2}.*paid\s+by') |  # USD amount
         filters.Regex(r'\d+\.\d{2}\s?៛.*paid\s+by') |  # KHR amount
         filters.Regex(r'Trx\.\s+ID:')  # Transaction ID
     )
     application.add_handler(MessageHandler(payment_filter, process_payment_alert))
 
-    # Add handlers for your custom bot messages (catch-all, but lower priority)
-    application.add_handler(MessageHandler(filters.TEXT, process_custom_bot_message))
+    # Catch-all for debugging (optional, lower priority)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_custom_bot_message))
 
     async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
         """

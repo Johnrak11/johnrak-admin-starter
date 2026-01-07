@@ -49,7 +49,6 @@ class KhqrService
         }
 
         // Tag 30: Merchant Account Information (ABA-specific structure)
-        // Based on decoded ABA Merchant App QR codes
         $abaGuid = 'abaakhppxxx@abaa';
         $abaBankLabel = 'ABA Bank';
 
@@ -60,18 +59,20 @@ class KhqrService
 
         $payload .= '30' . $this->formatLength($merchantAccountInfo) . $merchantAccountInfo;
 
-        // Tag 52: Merchant Category Code - 5399 (ABA standard)
-        $payload .= '52045399';
+        // Tag 52: Merchant Category Code
+        $mcc = '5399';
+        $payload .= '52' . $this->formatLength($mcc) . $mcc;
 
-        // Tag 53: Transaction Currency (USD)
-        $payload .= '5303840';
+        // Tag 53: Transaction Currency
+        $payload .= '53' . $this->formatLength($currencyCode) . $currencyCode;
 
         // Tag 54: Transaction Amount (ABA format: minimal, e.g. "10" not "10.00")
         $amountStr = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.') ?: '0';
         $payload .= '54' . $this->formatLength($amountStr) . $amountStr;
 
         // Tag 58: Country Code
-        $payload .= '5802KH';
+        $countryCode = 'KH';
+        $payload .= '58' . $this->formatLength($countryCode) . $countryCode;
 
         // Tag 59: Merchant Name
         $payload .= '59' . $this->formatLength($merchantName) . $merchantName;
