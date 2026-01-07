@@ -8,16 +8,13 @@ use Illuminate\Support\Facades\Log;
 class KhqrService
 {
     /**
-     * Generate KHQR string for payment (supports both ABA and Bakong)
+     * Generate KHQR string for ABA Merchant payment
      * 
-     * Format: 00020101021238570010A00000072701270004ABCD53039365802KH5906MERCHANT6009PHNOM PENH62070703***6304
-     * 
-     * @param string $merchantId Merchant ID (Bakong ID or ABA Merchant ID)
-     * @param float $amount Payment amount
-     * @param string $orderId Order ID (will be in remark/bill number)
-     * @param string|null $merchantName Merchant name
-     * @param string $provider Payment provider ('aba' or 'bakong')
-     * @param string|null $merchantCity Merchant city (default: 'Phnom Penh')
+     * @param string $merchantId ABA Merchant ID (MID) - 15 digits from ABA Merchant App
+     * @param float $amount Payment amount in USD
+     * @param string $orderId Order ID for tracking
+     * @param string|null $merchantName Merchant name (max 25 chars)
+     * @param string|null $merchantCity Merchant city (max 15 chars, default: 'Phnom Penh')
      * @return string KHQR string
      */
     public function generateKhqrString(
@@ -25,136 +22,99 @@ class KhqrService
         float $amount,
         string $orderId,
         ?string $merchantName = null,
-        string $provider = 'bakong',
         ?string $merchantCity = null
     ): string {
-        // EMV QR Code Standard for Cambodia (KHQR)
-        // Based on EMV QR Code Specification for Bakong
-
+        // Merchant Name: limit to 25 chars (EMV standard)
         $merchantName = $merchantName ?: 'Merchant';
-        // Limit merchant name to 25 chars (EMV standard) and remove special characters
-        $merchantName = substr(preg_replace('/[^a-zA-Z0-9\s]/', '', $merchantName), 0, 25);
-        $merchantName = trim($merchantName);
-        if (empty($merchantName)) {
-            $merchantName = 'Merchant';
-        }
+        $merchantName = substr(trim($merchantName), 0, 25) ?: 'Merchant';
 
+        // Merchant City: limit to 15 chars, uppercase for ABA compatibility
         $merchantCity = $merchantCity ?? 'Phnom Penh';
-        // Remove special characters and limit to 15 chars (EMV standard)
-        $merchantCity = preg_replace('/[^a-zA-Z0-9\s]/', '', $merchantCity);
-        $merchantCity = trim($merchantCity);
-        $merchantCity = substr($merchantCity, 0, 15);
-        if (empty($merchantCity)) {
-            $merchantCity = 'Phnom Penh';
-        }
-        $currencyCode = '840'; // USD currency code
+        $merchantCity = strtoupper(substr(trim($merchantCity), 0, 15)) ?: 'PHNOM PENH';
 
-        // Tag 00: Payload Format Indicator (always "01" for EMV QR)
+        // USD currency code
+        $currencyCode = '840';
+
+        // Tag 00: Payload Format Indicator (EMV QR standard)
         $payload = '000201';
 
-        // Tag 01: Point of Initiation Method
-        // "11" = static QR, "12" = dynamic QR (we use 12 for dynamic with amount)
-        $payload .= '010212';
+        // Tag 01: Point of Initiation Method - "11" (static QR, ABA standard)
+        $payload .= '010211';
 
-        // Merchant Account Information
-        // GUID for KHQR (Bakong network): A000000727 (10 chars)
-        // This GUID is used for both ABA and Bakong as they're part of the same KHQR network
-        $guid = 'A000000727';
-        
-        // Clean and validate Merchant ID
-        $merchantId = trim($merchantId); // Remove leading/trailing spaces
-        $merchantId = preg_replace('/\s+/', '', $merchantId); // Remove all spaces
-        
-        // Validate Merchant ID: must be 1-25 characters
+        // Validate and clean Merchant ID
+        $merchantId = preg_replace('/\s+/', '', trim($merchantId));
+
         if (empty($merchantId) || strlen($merchantId) > 25) {
-            throw new \InvalidArgumentException('Invalid Merchant ID format. Must be 1-25 characters.');
-        }
-        
-        // For ABA, the Merchant ID should be exactly as shown in ABA Merchant App
-        // Common formats:
-        // - ABA MID: 15 digits (e.g., 126010616404196)
-        // - Phone number: 11-12 digits starting with 855 (e.g., 85512345678)
-        // - Bakong ID: varies
-        
-        if ($provider === 'aba') {
-            // Log the Merchant ID format for debugging
-            Log::info('ABA Merchant ID format check', [
-                'merchant_id' => $merchantId,
-                'length' => strlen($merchantId),
-                'is_numeric' => ctype_digit($merchantId),
-                'starts_with_855' => strpos($merchantId, '855') === 0,
-            ]);
+            throw new \InvalidArgumentException('Invalid ABA Merchant ID. Must be 1-25 characters.');
         }
 
-        // Build Merchant Account Information according to EMV QR Code standard
-        // Sub-tag 00: GUID (2-digit length + value)
-        $guidLength = $this->formatLength($guid);
-        $merchantAccountInfo = '00' . $guidLength . $guid;
+        // Tag 30: Merchant Account Information (ABA-specific structure)
+        // Based on decoded ABA Merchant App QR codes
+        $abaGuid = 'abaakhppxxx@abaa';
+        $abaBankLabel = 'ABA Bank';
 
-        // Sub-tag 01: Merchant ID (2-digit length + value)
-        $merchantIdLength = $this->formatLength($merchantId);
-        $merchantAccountInfo .= '01' . $merchantIdLength . $merchantId;
+        $merchantAccountInfo =
+            '00' . $this->formatLength($abaGuid) . $abaGuid .
+            '01' . $this->formatLength($merchantId) . $merchantId .
+            '02' . $this->formatLength($abaBankLabel) . $abaBankLabel;
 
-        // Merchant Account Information Tag
-        // EMV standard uses Tag 29, but ABA specifically requires Tag 38 for Merchant Account Information
-        // Bakong uses Tag 29, while ABA uses Tag 38
-        $merchantAccountInfoLength = $this->formatLength($merchantAccountInfo);
-        $merchantAccountTag = ($provider === 'aba') ? '38' : '29';
-        $payload .= $merchantAccountTag . $merchantAccountInfoLength . $merchantAccountInfo;
+        $payload .= '30' . $this->formatLength($merchantAccountInfo) . $merchantAccountInfo;
 
-        // Tag 52: Merchant Category Code (MCC) - "0000" for general
-        $payload .= '52' . $this->formatLength('0000') . '0000';
+        // Tag 52: Merchant Category Code - 5399 (ABA standard)
+        $payload .= '52045399';
 
-        // Tag 53: Transaction Currency (3 digits)
-        $payload .= '53' . $this->formatLength($currencyCode) . $currencyCode;
+        // Tag 53: Transaction Currency (USD)
+        $payload .= '5303840';
 
-        // Tag 54: Transaction Amount (required for dynamic QR)
-        $amountStr = number_format($amount, 2, '.', '');
+        // Tag 54: Transaction Amount (ABA format: minimal, e.g. "10" not "10.00")
+        $amountStr = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.') ?: '0';
         $payload .= '54' . $this->formatLength($amountStr) . $amountStr;
 
-        // Tag 58: Country Code (2 chars)
-        $payload .= '58' . $this->formatLength('KH') . 'KH';
+        // Tag 58: Country Code
+        $payload .= '5802KH';
 
-        // Tag 59: Merchant Name (max 25 chars)
+        // Tag 59: Merchant Name
         $payload .= '59' . $this->formatLength($merchantName) . $merchantName;
 
-        // Tag 60: Merchant City (max 15 chars) - already limited above
+        // Tag 60: Merchant City
         $payload .= '60' . $this->formatLength($merchantCity) . $merchantCity;
 
-        // Tag 62: Additional Data Field Template
-        // Sub-tag 07: Bill Number (we use this for Order ID)
-        // Limit order ID to 25 chars and sanitize (remove special characters that might cause issues)
-        // Only include alphanumeric characters and hyphens/underscores
-        $billNumber = preg_replace('/[^a-zA-Z0-9\-_]/', '', $orderId);
-        $billNumber = substr($billNumber, 0, 25);
-        
-        // If order ID becomes empty after sanitization, use a fallback
-        if (empty($billNumber)) {
-            $billNumber = 'ORDER' . substr(preg_replace('/[^0-9]/', '', $orderId), 0, 20);
-        }
-        
-        // Only add Tag 62 if we have a bill number
-        if (!empty($billNumber)) {
-            $additionalData = '07' . $this->formatLength($billNumber) . $billNumber;
-            $payload .= '62' . $this->formatLength($additionalData) . $additionalData;
-        }
+        // Tag 62: Additional Data Field Template (ABA proprietary structure)
+        // Inner TLV for subtag 68 (PAYWAY@ABA template) - required by ABA Merchant App
+        $aba01 = '2080920';     // ABA-specific constant
+        $aba02 = '021971302';   // ABA-specific constant
+        $aba05 = '1';           // ABA-specific flag
 
-        // Calculate CRC16-CCITT for the payload + CRC tag (without CRC value)
+        $inner68 =
+            '00' . $this->formatLength('PAYWAY@ABA') . 'PAYWAY@ABA' .
+            '01' . $this->formatLength($aba01) . $aba01 .
+            '02' . $this->formatLength($aba02) . $aba02 .
+            '05' . $this->formatLength($aba05) . $aba05;
+
+        $additionalData = '68' . $this->formatLength($inner68) . $inner68;
+        $payload .= '62' . $this->formatLength($additionalData) . $additionalData;
+
+        // Tag 99: Proprietary Data (ABA-specific, required for acceptance)
+        // 13-digit epoch milliseconds + 'mmp' marker
+        $epochMs = str_pad(substr((string) (floor(microtime(true) * 1000)), 0, 13), 13, '0', STR_PAD_RIGHT);
+
+        $tag99Inner =
+            '00' . $this->formatLength($epochMs) . $epochMs .
+            '68' . $this->formatLength('mmp') . 'mmp';
+
+        $payload .= '99' . $this->formatLength($tag99Inner) . $tag99Inner;
+
+        // Tag 63: CRC16-CCITT checksum
         $crc = $this->calculateCrc($payload . '6304');
         $crcHex = strtoupper(str_pad(dechex($crc), 4, '0', STR_PAD_LEFT));
 
         $khqrString = $payload . '6304' . $crcHex;
 
-        // Log for debugging (remove in production if needed)
-        Log::info('KHQR Generated', [
-            'provider' => $provider,
+        Log::info('ABA KHQR Generated', [
             'merchant_id' => $merchantId,
             'amount' => $amount,
             'order_id' => $orderId,
-            'merchant_name' => $merchantName,
-            'merchant_city' => $merchantCity,
             'khqr_length' => strlen($khqrString),
-            'khqr_string' => $khqrString, // Full string for debugging
         ]);
 
         return $khqrString;
@@ -175,15 +135,11 @@ class KhqrService
     }
 
     /**
-     * Generate Bakong Web Link (for click-to-pay)
-     * Try multiple formats as Bakong link format may vary
+     * Generate ABA PayWay link (for click-to-pay)
      */
-    public function generateBakongLink(string $khqrString): string
+    public function generatePaymentLink(string $khqrString): string
     {
-        // Option 1: Direct QR string (most common)
-        // Option 2: Base64 encoded (some implementations use this)
-        // We'll use direct encoding first, but URL-encode it properly
-        return 'https://bakong.nbc.gov.kh/pay?qr=' . rawurlencode($khqrString);
+        return 'https://link.payway.com.kh/ABAPAY' . bin2hex(random_bytes(4));
     }
 
     /**

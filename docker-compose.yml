@@ -59,8 +59,10 @@ services:
     env_file:
       - ./telegramBotLstener/.env
     networks:
-      - internal
       - web_gateway
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - backend
       - frontend

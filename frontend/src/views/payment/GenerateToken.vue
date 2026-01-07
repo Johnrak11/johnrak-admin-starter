@@ -2,32 +2,23 @@
   <div class="space-y-6">
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Telegram Bot Authentication</div>
-        <div class="text-sm text-muted-foreground">
-          Use an API Access Token (below) in your bot as <code>PAYMENT_API_TOKEN</code>
-        </div>
-      </template>
-
-      <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm text-muted-foreground">
-        <div class="font-medium text-foreground">How to connect the bot</div>
-        <div>1) Create a token below (example name: <b>Telegram Bot</b>)</div>
-        <div>2) Put it in your bot environment:</div>
-        <div class="font-mono text-xs bg-background p-2 rounded border border-border">
-          PAYMENT_API_TOKEN=YOUR_TOKEN_HERE
-        </div>
-        <div>3) Bot will send <code>Authorization: Bearer &lt;token&gt;</code> to the webhook.</div>
-      </div>
-    </Card>
-
-    <Card>
-      <template #header>
         <div class="text-lg font-semibold">API Access Tokens</div>
         <div class="text-sm text-muted-foreground">
-          Generate API tokens for external applications to connect and access your admin panel
+          Generate secure API tokens for external applications and integrations
         </div>
       </template>
 
       <div class="space-y-4">
+        <div class="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+          <div class="text-sm font-medium text-blue-900 mb-2">🔐 About API Tokens</div>
+          <div class="text-xs text-blue-800 space-y-1">
+            <div>• Use API tokens to authenticate external applications that connect to your admin panel</div>
+            <div>• Tokens are sent as: <code class="bg-white px-1 py-0.5 rounded">Authorization: Bearer YOUR_TOKEN</code></div>
+            <div>• Set expiration dates for enhanced security</div>
+            <div>• Revoke tokens anytime if they're compromised</div>
+          </div>
+        </div>
+
         <div class="space-y-2">
           <Label>Token Name</Label>
           <Input
@@ -35,7 +26,7 @@
             placeholder="My App Integration"
           />
           <p class="text-xs text-muted-foreground">
-            Give your token a descriptive name (e.g., "Mobile App", "Python Script", "Webhook Service")
+            Give your token a descriptive name (e.g., "Mobile App", "Python Script", "External Service")
           </p>
         </div>
 
@@ -62,20 +53,17 @@
           class="rounded-lg border border-green-500/50 bg-green-500/10 p-4"
         >
           <div class="text-sm font-medium text-green-600 mb-2">
-            ⚠️ Token Generated (Save this - shown once)
+            ⚠️ Token Generated - Save it now (shown only once)
           </div>
           <div class="font-mono text-sm break-all bg-background p-3 rounded border border-border mb-2">
             {{ newToken.token }}
           </div>
-          <div class="mt-2 text-xs text-muted-foreground">
-            Bot env: <code>PAYMENT_API_TOKEN={{ newToken.token }}</code>
-          </div>
-          <div class="text-xs text-muted-foreground">
-            <div>Name: {{ newToken.name }}</div>
+          <div class="text-xs text-muted-foreground mt-2 space-y-1">
+            <div><b>Name:</b> {{ newToken.name }}</div>
             <div v-if="newToken.expires_at">
-              Expires: {{ formatDate(newToken.expires_at) }}
+              <b>Expires:</b> {{ formatDate(newToken.expires_at) }}
             </div>
-            <div v-else>Never expires</div>
+            <div v-else><b>Expiry:</b> Never expires</div>
           </div>
         </div>
       </div>
@@ -83,9 +71,9 @@
 
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Active API Tokens</div>
+        <div class="text-lg font-semibold">Active Tokens</div>
         <div class="text-sm text-muted-foreground">
-          Manage and revoke API tokens for external applications
+          Manage your API access tokens
         </div>
       </template>
 

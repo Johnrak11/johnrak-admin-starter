@@ -2,64 +2,73 @@
   <div class="space-y-6">
     <Card>
       <template #header>
-        <div class="text-lg font-semibold">Payment Gateway Configuration</div>
+        <div class="text-lg font-semibold">ABA Merchant Configuration</div>
         <div class="text-sm text-muted-foreground">
-          Configure your Bakong payment settings
+          Configure your ABA Merchant payment settings
         </div>
       </template>
 
       <div v-if="loading" class="text-sm text-muted-foreground">Loading...</div>
 
-      <div v-else class="space-y-4">
-        <div class="space-y-2">
-          <Label>Provider</Label>
-          <select
-            v-model="form.provider"
-            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="bakong">Bakong</option>
-            <option value="aba">ABA</option>
-          </select>
-        </div>
-
-        <div class="space-y-2">
-          <Label>{{ form.provider === 'aba' ? 'ABA Merchant ID (MID)' : 'Bakong ID' }} *</Label>
-          <Input
-            v-model="form.bakong_id"
-            :placeholder="form.provider === 'aba' ? '126010616404196 (from ABA Merchant App)' : 'Your Bakong account ID'"
-          />
-          <p class="text-xs text-muted-foreground">
-            <span v-if="form.provider === 'aba'">
-              Your ABA Merchant ID (MID) from ABA Merchant App. Found on your QR codes as "MID: ..."
-            </span>
-            <span v-else>
-              Your Bakong merchant account identifier (phone number or Bakong ID)
-            </span>
-          </p>
-        </div>
-
-        <div class="space-y-2">
-          <Label>Merchant Name</Label>
-          <Input
-            v-model="form.merchant_name"
-            placeholder="Your Business Name"
-          />
-        </div>
-
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-sm font-medium">Enable Payments</div>
-            <div class="text-xs text-muted-foreground">
-              Allow payment processing
-            </div>
+      <div v-else class="space-y-6">
+        <div class="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+          <div class="text-sm font-medium text-blue-900 mb-2">🏦 How to get your ABA Merchant ID</div>
+          <div class="text-xs text-blue-800 space-y-1">
+            <div>1. Register in ABA Merchant App using "Preferred Business Name" (no docs required)</div>
+            <div>2. After registration, your MID appears on generated QR codes</div>
+            <div>3. Copy your 15-digit MID (e.g., 126010616404196) and paste below</div>
           </div>
-          <Switch v-model="form.enabled" />
         </div>
 
-        <div class="flex justify-end">
-          <Button @click="save" :disabled="saving">
-            {{ saving ? "Saving..." : "Save Configuration" }}
-          </Button>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label>ABA Merchant ID (MID) *</Label>
+            <Input
+              v-model="form.aba_merchant_id"
+              placeholder="126010616404196"
+              maxlength="25"
+            />
+            <p class="text-xs text-muted-foreground">
+              Your 15-digit ABA Merchant ID from ABA Merchant App (found on your QR codes as "MID: ...")
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label>Merchant Name</Label>
+            <Input
+              v-model="form.merchant_name"
+              placeholder="Your Business Name"
+              maxlength="25"
+            />
+            <p class="text-xs text-muted-foreground">
+              Business name (max 25 characters, will be shown in QR code)
+            </p>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm font-medium">Enable Payments</div>
+              <div class="text-xs text-muted-foreground">
+                Allow payment QR code generation
+              </div>
+            </div>
+            <Switch v-model="form.enabled" />
+          </div>
+
+          <div class="flex justify-end">
+            <Button @click="save" :disabled="saving">
+              {{ saving ? "Saving..." : "Save Configuration" }}
+            </Button>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-border bg-muted/30 p-4">
+          <div class="text-sm font-medium mb-2">✓ Next Steps</div>
+          <div class="text-xs text-muted-foreground space-y-1">
+            <div>• Configure your merchant details in Merchant Info</div>
+            <div>• Generate payment QR codes in Generate Payment QR</div>
+            <div>• Track transactions in Transactions</div>
+          </div>
         </div>
       </div>
     </Card>
@@ -79,8 +88,7 @@ const loading = ref(true);
 const saving = ref(false);
 
 const form = reactive({
-  provider: "bakong",
-  bakong_id: "",
+  aba_merchant_id: "",
   merchant_name: "",
   enabled: true,
 });
@@ -90,8 +98,7 @@ async function load() {
   try {
     const res = await api().get("/api/payment/config");
     const config = res.data.config;
-    form.provider = config.provider || "bakong";
-    form.bakong_id = config.bakong_id || "";
+    form.aba_merchant_id = config.aba_merchant_id || "";
     form.merchant_name = config.merchant_name || "";
     form.enabled = config.enabled ?? true;
   } finally {
@@ -103,7 +110,7 @@ async function save() {
   saving.value = true;
   try {
     await api().post("/api/payment/config", form);
-    alert("Configuration saved!");
+    alert("ABA Merchant configuration saved successfully!");
   } catch (e) {
     alert(e?.response?.data?.error || "Failed to save");
   } finally {

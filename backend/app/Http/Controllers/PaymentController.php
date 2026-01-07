@@ -17,19 +17,14 @@ class PaymentController extends Controller
     {
         $config = PaymentConfig::firstOrCreate(
             ['user_id' => $request->user()->id],
-            [
-                'provider' => 'bakong',
-                'enabled' => true,
-            ]
+            ['enabled' => true]
         );
 
         return response()->json([
             'config' => [
-                'provider' => $config->provider,
-                'bakong_id' => $config->bakong_id,
+                'aba_merchant_id' => $config->bakong_id, // Using bakong_id column for ABA MID
                 'merchant_name' => $config->merchant_name,
                 'enabled' => $config->enabled,
-                'webhook_configured' => !empty($config->webhook_secret),
             ],
         ]);
     }
@@ -38,20 +33,14 @@ class PaymentController extends Controller
     {
         $config = PaymentConfig::where('user_id', $request->user()->id)->first();
 
-        $providerMerchantInfo = $config->provider_merchant_info ?? [];
-
-        // Default values for each provider
-        $defaultInfo = [
-            'merchant_city' => 'Phnom Penh',
-            'merchant_phone' => null,
-            'merchant_email' => null,
-            'merchant_address' => null,
-        ];
+        $merchantInfo = $config->provider_merchant_info['aba'] ?? [];
 
         return response()->json([
             'merchant_info' => [
-                'aba' => array_merge($defaultInfo, $providerMerchantInfo['aba'] ?? []),
-                'bakong' => array_merge($defaultInfo, $providerMerchantInfo['bakong'] ?? []),
+                'merchant_city' => $merchantInfo['merchant_city'] ?? 'Phnom Penh',
+                'merchant_phone' => $merchantInfo['merchant_phone'] ?? null,
+                'merchant_email' => $merchantInfo['merchant_email'] ?? null,
+                'merchant_address' => $merchantInfo['merchant_address'] ?? null,
             ],
         ]);
     }
@@ -59,7 +48,6 @@ class PaymentController extends Controller
     public function saveMerchantInfo(Request $request)
     {
         $validated = $request->validate([
-            'provider' => ['required', 'in:aba,bakong'],
             'merchant_city' => ['nullable', 'string', 'max:15'], // EMV standard max 15 chars
             'merchant_phone' => ['nullable', 'string', 'max:50'],
             'merchant_email' => ['nullable', 'email', 'max:200'],
@@ -68,41 +56,42 @@ class PaymentController extends Controller
 
         $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
 
-        $provider = $validated['provider'];
-        $providerMerchantInfo = $config->provider_merchant_info ?? [];
-
-        // Update merchant info for the specific provider
-        $providerMerchantInfo[$provider] = [
+        $merchantInfo = [
             'merchant_city' => $validated['merchant_city'] ?? 'Phnom Penh',
             'merchant_phone' => $validated['merchant_phone'] ?? null,
             'merchant_email' => $validated['merchant_email'] ?? null,
             'merchant_address' => $validated['merchant_address'] ?? null,
         ];
 
-        $config->provider_merchant_info = $providerMerchantInfo;
+        // Store in provider_merchant_info['aba'] for backward compatibility
+        $config->provider_merchant_info = ['aba' => $merchantInfo];
         $config->save();
 
-        return response()->json([
-            'merchant_info' => $providerMerchantInfo[$provider],
-        ]);
+        return response()->json(['merchant_info' => $merchantInfo]);
     }
 
     public function saveConfig(Request $request)
     {
         $validated = $request->validate([
-            'provider' => ['required', 'in:bakong,aba'],
-            'bakong_id' => ['required', 'string', 'max:100'],
+            'aba_merchant_id' => ['required', 'string', 'max:100'],
             'merchant_name' => ['nullable', 'string', 'max:200'],
             'enabled' => ['required', 'boolean'],
         ]);
 
         $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
 
-        $config->fill($validated);
+        // Map aba_merchant_id to bakong_id column
+        $config->bakong_id = $validated['aba_merchant_id'];
+        $config->merchant_name = $validated['merchant_name'];
+        $config->enabled = $validated['enabled'];
         $config->save();
 
         return response()->json([
-            'config' => $config->only(['provider', 'bakong_id', 'merchant_name', 'enabled']),
+            'config' => [
+                'aba_merchant_id' => $config->bakong_id,
+                'merchant_name' => $config->merchant_name,
+                'enabled' => $config->enabled,
+            ],
         ]);
     }
 
@@ -110,21 +99,21 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
-            'order_id' => ['required', 'string', 'max:25'], // Limit to 25 chars for EMV standard
+            'order_id' => ['required', 'string', 'max:25'],
         ]);
 
         $config = PaymentConfig::where('user_id', $request->user()->id)->first();
         if (!$config || !$config->enabled || !$config->bakong_id) {
-            return response()->json(['error' => 'Payment not configured'], 422);
+            return response()->json(['error' => 'ABA Merchant payment not configured'], 422);
         }
 
-        // Validate Bakong ID format
-        $bakongId = trim($config->bakong_id);
-        if (empty($bakongId) || strlen($bakongId) > 25) {
-            return response()->json(['error' => 'Invalid Bakong ID format (must be 1-25 characters)'], 422);
+        // Validate ABA Merchant ID
+        $abaMerchantId = trim($config->bakong_id);
+        if (empty($abaMerchantId) || strlen($abaMerchantId) > 25) {
+            return response()->json(['error' => 'Invalid ABA Merchant ID (must be 1-25 characters)'], 422);
         }
 
-        // Create test transaction
+        // Create transaction
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
             'order_id' => $validated['order_id'],
@@ -134,24 +123,21 @@ class PaymentController extends Controller
             'expires_at' => now()->addHours(24),
         ]);
 
-        // Get provider-specific merchant info
-        $provider = $config->provider ?? 'bakong';
-        $providerMerchantInfo = $config->provider_merchant_info ?? [];
-        $merchantInfo = $providerMerchantInfo[$provider] ?? [];
-        $merchantCity = $merchantInfo['merchant_city'] ?? $config->merchant_city ?? 'Phnom Penh';
+        // Get merchant info
+        $merchantInfo = $config->provider_merchant_info['aba'] ?? [];
+        $merchantCity = $merchantInfo['merchant_city'] ?? 'Phnom Penh';
 
-        // Generate KHQR
+        // Generate ABA KHQR
         try {
             $khqrString = $khqrService->generateKhqrString(
-                $bakongId,
+                $abaMerchantId,
                 (float) $validated['amount'],
                 $validated['order_id'],
                 $config->merchant_name,
-                $provider, // Pass the provider (aba or bakong)
-                $merchantCity // Pass merchant city from provider-specific config
+                $merchantCity
             );
         } catch (\Exception $e) {
-            Log::error('KHQR generation failed', ['error' => $e->getMessage()]);
+            Log::error('ABA KHQR generation failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to generate QR code: ' . $e->getMessage()], 500);
         }
 
@@ -170,14 +156,14 @@ class PaymentController extends Controller
             }
         }
 
-        $bakongLink = $khqrService->generateBakongLink($khqrString);
+        $paymentLink = $khqrService->generatePaymentLink($khqrString);
 
         return response()->json([
             'transaction' => $transaction,
             'khqr_string' => $khqrString,
             'qr_svg' => $qrSvg,
             'qr_png' => $qrPng,
-            'bakong_link' => $bakongLink,
+            'payment_link' => $paymentLink,
         ]);
     }
 
@@ -293,7 +279,7 @@ class PaymentController extends Controller
         // Resolve the owner config from the token owner
         $config = PaymentConfig::firstOrCreate(
             ['user_id' => $paymentToken->user_id],
-            ['provider' => 'bakong', 'enabled' => true]
+            ['enabled' => true]
         );
 
         $validated = $request->validate([
@@ -337,6 +323,37 @@ class PaymentController extends Controller
                     ->where('status', 'pending')
                     ->lockForUpdate()
                     ->first();
+            }
+
+            // If order_id is missing (ABA PAY often omits Remark), try to match the most recent pending
+            // transaction by amount + currency within a short time window.
+            // This allows one-time QR flows to be reconciled even without Remark.
+            if (!$transaction && empty($validated['order_id'])) {
+                $currency = $validated['currency'] ?? 'USD';
+                $receivedAmount = (float) $validated['amount'];
+
+                $candidates = Transaction::where('user_id', $config->user_id)
+                    ->where('status', 'pending')
+                    ->where('currency', $currency)
+                    ->where('amount', $receivedAmount)
+                    ->where('created_at', '>=', now()->subMinutes(15))
+                    ->orderByDesc('created_at')
+                    ->lockForUpdate()
+                    ->limit(2)
+                    ->get();
+
+                if ($candidates->count() >= 1) {
+                    if ($candidates->count() > 1) {
+                        Log::warning('Payment webhook: Multiple candidate pending transactions matched by amount; using most recent', [
+                            'transaction_id' => $validated['transaction_id'],
+                            'amount' => $receivedAmount,
+                            'currency' => $currency,
+                            'candidate_ids' => $candidates->pluck('id')->all(),
+                        ]);
+                    }
+
+                    $transaction = $candidates->first();
+                }
             }
 
             // If still not found, create a new transaction record (for payments without order_id)
