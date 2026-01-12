@@ -29,9 +29,10 @@ class BakongService
     {
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'BakongApp/1.0 (Android 10; Mobile)',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache',
             ])->withToken($token)
                 ->post("{$this->baseUrl}/check_transaction_by_md5", [
                     'md5' => $md5
@@ -68,9 +69,10 @@ class BakongService
     {
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'BakongApp/1.0 (Android 10; Mobile)',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache',
             ])->post("{$this->baseUrl}/renew_token", [
                         'email' => $email
                     ]);
