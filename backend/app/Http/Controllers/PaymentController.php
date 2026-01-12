@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentConfig;
 use App\Models\Transaction;
-use App\Models\PaymentToken;
 use App\Services\KhqrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,75 +21,59 @@ class PaymentController extends Controller
 
         return response()->json([
             'config' => [
-                'aba_merchant_id' => $config->bakong_id, // Using bakong_id column for ABA MID
+                'aba_merchant_id' => $config->bakong_id, // Merchant ID (ABA or Bakong)
                 'merchant_name' => $config->merchant_name,
+                'merchant_city' => $config->merchant_city,
                 'enabled' => $config->enabled,
+                'provider' => $config->provider ?? 'aba',
+                'bakong_token' => $config->provider_merchant_info['bakong_token'] ?? null,
             ],
         ]);
     }
 
-    public function getMerchantInfo(Request $request)
-    {
-        $config = PaymentConfig::where('user_id', $request->user()->id)->first();
 
-        $merchantInfo = $config->provider_merchant_info['aba'] ?? [];
-
-        return response()->json([
-            'merchant_info' => [
-                'merchant_city' => $merchantInfo['merchant_city'] ?? 'Phnom Penh',
-                'merchant_phone' => $merchantInfo['merchant_phone'] ?? null,
-                'merchant_email' => $merchantInfo['merchant_email'] ?? null,
-                'merchant_address' => $merchantInfo['merchant_address'] ?? null,
-            ],
-        ]);
-    }
-
-    public function saveMerchantInfo(Request $request)
-    {
-        $validated = $request->validate([
-            'merchant_city' => ['nullable', 'string', 'max:15'], // EMV standard max 15 chars
-            'merchant_phone' => ['nullable', 'string', 'max:50'],
-            'merchant_email' => ['nullable', 'email', 'max:200'],
-            'merchant_address' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
-
-        $merchantInfo = [
-            'merchant_city' => $validated['merchant_city'] ?? 'Phnom Penh',
-            'merchant_phone' => $validated['merchant_phone'] ?? null,
-            'merchant_email' => $validated['merchant_email'] ?? null,
-            'merchant_address' => $validated['merchant_address'] ?? null,
-        ];
-
-        // Store in provider_merchant_info['aba'] for backward compatibility
-        $config->provider_merchant_info = ['aba' => $merchantInfo];
-        $config->save();
-
-        return response()->json(['merchant_info' => $merchantInfo]);
-    }
 
     public function saveConfig(Request $request)
     {
         $validated = $request->validate([
             'aba_merchant_id' => ['required', 'string', 'max:100'],
             'merchant_name' => ['nullable', 'string', 'max:200'],
+            'merchant_city' => ['nullable', 'string', 'max:50'],
+            'merchant_email' => ['nullable', 'email', 'max:100'],
             'enabled' => ['required', 'boolean'],
+            'bakong_token' => ['nullable', 'string', 'max:255'],
         ]);
 
         $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
 
-        // Map aba_merchant_id to bakong_id column
+        // Map aba_merchant_id to bakong_id column (keeping variable name for now to avoid migration, but treating as Bakong ID)
         $config->bakong_id = $validated['aba_merchant_id'];
         $config->merchant_name = $validated['merchant_name'];
+        $config->merchant_city = $validated['merchant_city'] ?? 'Phnom Penh';
         $config->enabled = $validated['enabled'];
+        $config->provider = 'bakong'; // Force Bakong
+
+        // Save generic info in json
+        $info = $config->provider_merchant_info ?? [];
+        if ($request->has('bakong_token')) {
+            $info['bakong_token'] = $request->input('bakong_token');
+        }
+        if ($request->has('merchant_email')) {
+            $info['merchant_email'] = $request->input('merchant_email');
+        }
+        $config->provider_merchant_info = $info;
+
         $config->save();
 
         return response()->json([
             'config' => [
                 'aba_merchant_id' => $config->bakong_id,
                 'merchant_name' => $config->merchant_name,
+                'merchant_city' => $config->merchant_city,
+                'merchant_email' => $config->provider_merchant_info['merchant_email'] ?? null,
                 'enabled' => $config->enabled,
+                'provider' => 'bakong',
+                'bakong_token' => $config->provider_merchant_info['bakong_token'] ?? null,
             ],
         ]);
     }
@@ -99,24 +82,27 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
-            'order_id' => ['required', 'string', 'max:25'],
+            'order_id' => ['nullable', 'string', 'max:25'],
         ]);
 
         $config = PaymentConfig::where('user_id', $request->user()->id)->first();
         if (!$config || !$config->enabled || !$config->bakong_id) {
-            return response()->json(['error' => 'ABA Merchant payment not configured'], 422);
+            return response()->json(['error' => 'Bakong Merchant payment not configured'], 422);
         }
 
-        // Validate ABA Merchant ID
-        $abaMerchantId = trim($config->bakong_id);
-        if (empty($abaMerchantId) || strlen($abaMerchantId) > 25) {
-            return response()->json(['error' => 'Invalid ABA Merchant ID (must be 1-25 characters)'], 422);
+        // Validate Bakong/ABA Merchant ID
+        $merchantId = trim($config->bakong_id);
+        if (empty($merchantId) || strlen($merchantId) > 25) {
+            return response()->json(['error' => 'Invalid Merchant ID (must be 1-25 characters)'], 422);
         }
+
+        // Auto-generate Order ID if not provided
+        $orderId = $validated['order_id'] ?? 'ORD-' . strtoupper(Str::random(8));
 
         // Create transaction
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
-            'order_id' => $validated['order_id'],
+            'order_id' => $orderId,
             'amount' => $validated['amount'],
             'currency' => 'USD',
             'status' => 'pending',
@@ -124,25 +110,24 @@ class PaymentController extends Controller
         ]);
 
         // Get merchant info
-        $merchantInfo = $config->provider_merchant_info['aba'] ?? [];
-        $merchantCity = $merchantInfo['merchant_city'] ?? 'Phnom Penh';
+        $merchantCity = $config->merchant_city ?? 'Phnom Penh';
 
-        // Generate ABA KHQR
+        // Generate KHQR
         try {
             $khqrString = $khqrService->generateKhqrString(
-                $abaMerchantId,
+                $merchantId,
                 (float) $validated['amount'],
-                $validated['order_id'],
+                $orderId,
                 $config->merchant_name,
                 $merchantCity
             );
         } catch (\Exception $e) {
-            Log::error('ABA KHQR generation failed', ['error' => $e->getMessage()]);
+            Log::error('KHQR generation failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to generate QR code: ' . $e->getMessage()], 500);
         }
 
         $transaction->khqr_string = $khqrString;
-        $transaction->remark = $validated['order_id'];
+        $transaction->remark = $orderId;
         $transaction->save();
 
         // Generate QR code images
@@ -158,9 +143,13 @@ class PaymentController extends Controller
 
         $paymentLink = $khqrService->generatePaymentLink($khqrString);
 
+        // Calculate MD5 for Bakong Status Check
+        $md5 = md5($khqrString);
+
         return response()->json([
             'transaction' => $transaction,
             'khqr_string' => $khqrString,
+            'md5' => $md5,
             'qr_svg' => $qrSvg,
             'qr_png' => $qrPng,
             'payment_link' => $paymentLink,
@@ -196,255 +185,103 @@ class PaymentController extends Controller
         return response()->json(['transaction' => $transaction]);
     }
 
-    public function generateToken(Request $request)
+
+
+    public function checkStatus(Request $request, \App\Services\BakongService $bakongService)
     {
         $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:200'],
-            'expires_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'md5' => ['required', 'string'],
+            'token' => ['nullable', 'string'],
         ]);
 
-        $token = PaymentToken::create([
-            'user_id' => $request->user()->id,
-            'token' => PaymentToken::generate(),
-            'name' => $validated['name'] ?? 'Python API Token',
-            'expires_at' => isset($validated['expires_days'])
-                ? now()->addDays($validated['expires_days'])
-                : null,
-            'is_active' => true,
-        ]);
+        $config = PaymentConfig::where('user_id', $request->user()->id)->first();
+        // Use provided token or fallback to stored token
+        $token = $validated['token'] ?? ($config->provider_merchant_info['bakong_token'] ?? null);
 
-        return response()->json([
-            'token' => $token->token, // Show once
-            'name' => $token->name,
-            'expires_at' => $token->expires_at,
-        ]);
-    }
-
-    public function listTokens(Request $request)
-    {
-        $tokens = PaymentToken::where('user_id', $request->user()->id)
-            ->orderByDesc('created_at')
-            ->get();
-
-        return response()->json([
-            'tokens' => $tokens->map(function ($token) {
-                return [
-                    'id' => $token->id,
-                    'name' => $token->name,
-                    'last_used_at' => $token->last_used_at,
-                    'expires_at' => $token->expires_at,
-                    'is_active' => $token->is_active,
-                    'is_valid' => $token->isValid(),
-                    'created_at' => $token->created_at,
-                ];
-            }),
-        ]);
-    }
-
-    public function revokeToken(Request $request, PaymentToken $token)
-    {
-        if ($token->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Not found'], 404);
+        if (!$token) {
+            return response()->json(['error' => 'Bakong Token not provided'], 400);
         }
 
-        $token->is_active = false;
-        $token->save();
+        $result = $bakongService->checkTransactionStatus($token, $validated['md5']);
 
-        return response()->json(['ok' => true]);
-    }
-
-    /**
-     * Webhook endpoint for Telegram bot
-     * This is called by the Python listener when payment is received
-     */
-    public function webhook(Request $request)
-    {
-        // Auth: API Access Token (Bearer)
-        // Bot must send: Authorization: Bearer <token>
-        $bearer = $request->bearerToken();
-        if (!$bearer) {
-            Log::warning('Payment webhook: Missing bearer token', ['ip' => $request->ip()]);
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (!$result) {
+            return response()->json(['status' => 'unknown', 'message' => 'Failed to check status'], 500);
         }
 
-        $paymentToken = PaymentToken::where('token', $bearer)->first();
-        if (!$paymentToken || !$paymentToken->isValid()) {
-            Log::warning('Payment webhook: Invalid/expired token', ['ip' => $request->ip()]);
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        // Response handling
+        // 0 = Success
+        if (($result['responseCode'] ?? -1) === 0) {
+            // Find matched pending transaction by calculating MD5 of khqr_string
+            // This is slightly inefficient but works without migration for now.
+            // Or assume polling only checks recent transactions.
+            $pending = Transaction::where('status', 'pending')
+                ->where('user_id', $request->user()->id)
+                ->orderByDesc('created_at')
+                ->limit(20) // Limit to recent pending to avoid heavy load
+                ->get();
 
-        $paymentToken->last_used_at = now();
-        $paymentToken->save();
+            $transaction = $pending->first(function ($t) use ($validated) {
+                return md5($t->khqr_string) === $validated['md5'];
+            });
 
-        // Resolve the owner config from the token owner
-        $config = PaymentConfig::firstOrCreate(
-            ['user_id' => $paymentToken->user_id],
-            ['enabled' => true]
-        );
+            if ($transaction) {
+                $transaction->status = 'paid';
+                $transaction->paid_at = now();
+                $transaction->save();
 
-        $validated = $request->validate([
-            'order_id' => ['nullable', 'string'], // Order ID is optional - can be null
-            'amount' => ['required', 'numeric'],
-            'currency' => ['nullable', 'string', 'max:3'],
-            'transaction_id' => ['required', 'string'], // ABA transaction ID (for idempotency)
-            'payer_name' => ['nullable', 'string', 'max:200'],
-            'payer_phone' => ['nullable', 'string', 'max:50'],
-            'metadata' => ['nullable', 'array'],
-        ]);
-
-        // Use database transaction to prevent race conditions
-        return DB::transaction(function () use ($validated, $config) {
-            // Check if this transaction was already processed (idempotency)
-            $existing = Transaction::where('transaction_id', $validated['transaction_id'])->first();
-            if ($existing) {
-                Log::info('Payment webhook: Duplicate transaction ignored', [
-                    'transaction_id' => $validated['transaction_id'],
-                ]);
-                return response()->json([
-                    'message' => 'Already processed',
-                    'transaction' => $existing,
-                ]);
-            }
-
-            // Find the pending transaction by order_id (if provided) or by transaction_id
-            $transaction = null;
-
-            if (!empty($validated['order_id'])) {
-                // Try to find by order_id first
-                $transaction = Transaction::where('order_id', $validated['order_id'])
-                    ->where('status', 'pending')
-                    ->lockForUpdate()
-                    ->first();
-            }
-
-            // If not found by order_id, try to find by transaction_id (for payments without order_id)
-            if (!$transaction) {
-                $transaction = Transaction::where('transaction_id', $validated['transaction_id'])
-                    ->where('status', 'pending')
-                    ->lockForUpdate()
-                    ->first();
-            }
-
-            // If order_id is missing (ABA PAY often omits Remark), try to match the most recent pending
-            // transaction by amount + currency within a short time window.
-            // This allows one-time QR flows to be reconciled even without Remark.
-            if (!$transaction && empty($validated['order_id'])) {
-                $currency = $validated['currency'] ?? 'USD';
-                $receivedAmount = (float) $validated['amount'];
-
-                $candidates = Transaction::where('user_id', $config->user_id)
-                    ->where('status', 'pending')
-                    ->where('currency', $currency)
-                    ->where('amount', $receivedAmount)
-                    ->where('created_at', '>=', now()->subMinutes(15))
-                    ->orderByDesc('created_at')
-                    ->lockForUpdate()
-                    ->limit(2)
-                    ->get();
-
-                if ($candidates->count() >= 1) {
-                    if ($candidates->count() > 1) {
-                        Log::warning('Payment webhook: Multiple candidate pending transactions matched by amount; using most recent', [
-                            'transaction_id' => $validated['transaction_id'],
-                            'amount' => $receivedAmount,
-                            'currency' => $currency,
-                            'candidate_ids' => $candidates->pluck('id')->all(),
-                        ]);
-                    }
-
-                    $transaction = $candidates->first();
+                // Send Telegram Notification
+                try {
+                    $telegramService = new \App\Services\TelegramService();
+                    $telegramService->sendPaymentSuccess($transaction);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Telegram Notification Error', ['msg' => $e->getMessage()]);
                 }
             }
-
-            // If still not found, create a new transaction record (for payments without order_id)
-            if (!$transaction) {
-                if (empty($validated['order_id'])) {
-                    // Create a new transaction for payments without order_id
-                    $transaction = Transaction::create([
-                        'user_id' => $config->user_id,
-                        'order_id' => null,
-                        'amount' => $validated['amount'],
-                        'currency' => $validated['currency'],
-                        'status' => 'pending',
-                        'transaction_id' => $validated['transaction_id'],
-                        'payer_name' => $validated['payer_name'] ?? null,
-                        'payer_phone' => $validated['payer_phone'] ?? null,
-                        'metadata' => $validated['metadata'] ?? [],
-                    ]);
-                } else {
-                    Log::warning('Payment webhook: Transaction not found', [
-                        'order_id' => $validated['order_id'],
-                        'transaction_id' => $validated['transaction_id'],
-                    ]);
-                    return response()->json(['error' => 'Transaction not found'], 404);
-                }
-            }
-
-            // Verify amount matches (only if transaction already existed with an amount)
-            if ($transaction->wasRecentlyCreated === false && $transaction->amount) {
-                $expectedAmount = (float) $transaction->amount;
-                $receivedAmount = (float) $validated['amount'];
-
-                if (abs($expectedAmount - $receivedAmount) > 0.01) {
-                    // Amount mismatch - mark as error
-                    $transaction->update([
-                        'status' => 'error',
-                        'metadata' => array_merge($transaction->metadata ?? [], [
-                            'error' => 'Amount mismatch',
-                            'expected' => $expectedAmount,
-                            'received' => $receivedAmount,
-                        ]),
-                    ]);
-
-                    Log::warning('Payment webhook: Amount mismatch', [
-                        'order_id' => $validated['order_id'] ?? null,
-                        'transaction_id' => $validated['transaction_id'],
-                        'expected' => $expectedAmount,
-                        'received' => $receivedAmount,
-                    ]);
-
-                    return response()->json(['error' => 'Amount mismatch'], 422);
-                }
-            }
-
-            // Update transaction as paid
-            $updateData = [
-                'status' => 'paid',
-                'transaction_id' => $validated['transaction_id'],
-                'payer_name' => $validated['payer_name'] ?? $transaction->payer_name,
-                'payer_phone' => $validated['payer_phone'] ?? $transaction->payer_phone,
-                'paid_at' => now(),
-                'metadata' => array_merge($transaction->metadata ?? [], $validated['metadata'] ?? []),
-            ];
-
-            // Update order_id if it was null and now we have it
-            if (empty($transaction->order_id) && !empty($validated['order_id'])) {
-                $updateData['order_id'] = $validated['order_id'];
-            }
-
-            // Update amount if transaction was just created (for payments without order_id)
-            if ($transaction->wasRecentlyCreated) {
-                $updateData['amount'] = $validated['amount'];
-                $updateData['currency'] = $validated['currency'] ?? 'USD';
-            }
-
-            $transaction->update($updateData);
-
-            Log::info('Payment webhook: Transaction paid', [
-                'order_id' => $validated['order_id'] ?? null,
-                'transaction_id' => $validated['transaction_id'],
-            ]);
-
-            // Here you can trigger additional actions:
-            // - Send email notification
-            // - Unlock digital product
-            // - Update user credits
-            // - etc.
 
             return response()->json([
-                'message' => 'Payment processed',
-                'transaction' => $transaction->fresh(),
+                'status' => 'paid',
+                'data' => $result
             ]);
-        });
+        }
+
+        return response()->json([
+            'status' => 'pending',
+            'details' => $result
+        ]);
+    }
+
+    public function renewToken(Request $request, \App\Services\BakongService $bakongService)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $result = $bakongService->renewToken($validated['email']);
+
+        if (!$result || ($result['responseCode'] ?? -1) !== 0) {
+            return response()->json([
+                'error' => 'Failed to renew token. ' . ($result['responseMessage'] ?? ''),
+                'details' => $result
+            ], 400);
+        }
+
+        // Successfully got token
+        $token = $result['data']['token'] ?? null;
+
+        if ($token) {
+            // Save it automatically?
+            $config = PaymentConfig::firstOrCreate(['user_id' => $request->user()->id]);
+            $info = $config->provider_merchant_info ?? [];
+            $info['bakong_token'] = $token;
+            // Also update email if different
+            $info['merchant_email'] = $validated['email'];
+            $config->provider_merchant_info = $info;
+            $config->save();
+        }
+
+        return response()->json([
+            'message' => 'Token renewed successfully',
+            'token' => $token
+        ]);
     }
 }

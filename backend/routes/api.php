@@ -37,11 +37,7 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function
     Route::delete('/crypto/trades/{trade}', [CryptoController::class, 'deleteTrade']);
     Route::get('/crypto/{coin}', [CryptoController::class, 'getMarketData']);
 
-    // Telegram Test
-    Route::get('/admin/test-telegram', function () {
-        $ok = \App\Services\TelegramService::sendMessage("🚀 <b>Johnrak System is Online!</b>\nTest notification from Admin Dashboard.");
-        return response()->json(['sent' => $ok]);
-    });
+
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('portfolio')->group(function () {
@@ -90,20 +86,19 @@ Route::prefix('client')->group(function () {
 });
 
 Route::prefix('payment')->group(function () {
-    // Public webhook (auth via API Access Token in Authorization: Bearer <token>)
-    Route::post('/webhook', [\App\Http\Controllers\PaymentController::class, 'webhook'])->middleware('throttle:payment-webhook');
-    
+
+
     // Protected routes (owner only)
     Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->group(function () {
         Route::get('/config', [\App\Http\Controllers\PaymentController::class, 'getConfig']);
         Route::post('/config', [\App\Http\Controllers\PaymentController::class, 'saveConfig']);
-        Route::get('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'getMerchantInfo']);
-        Route::post('/merchant-info', [\App\Http\Controllers\PaymentController::class, 'saveMerchantInfo']);
+
         Route::post('/test', [\App\Http\Controllers\PaymentController::class, 'testPayment']);
         Route::get('/transactions', [\App\Http\Controllers\PaymentController::class, 'listTransactions']);
         Route::get('/transactions/{transaction}', [\App\Http\Controllers\PaymentController::class, 'getTransaction']);
-        Route::post('/tokens', [\App\Http\Controllers\PaymentController::class, 'generateToken']);
-        Route::get('/tokens', [\App\Http\Controllers\PaymentController::class, 'listTokens']);
-        Route::delete('/tokens/{token}', [\App\Http\Controllers\PaymentController::class, 'revokeToken']);
+
+        // Bakong Specific
+        Route::post('/bakong/check-status', [\App\Http\Controllers\PaymentController::class, 'checkStatus']);
+        Route::post('/bakong/renew-token', [\App\Http\Controllers\PaymentController::class, 'renewToken']);
     });
 });

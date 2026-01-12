@@ -7,32 +7,53 @@ use Illuminate\Support\Facades\Log;
 
 class TelegramService
 {
-    public static function sendMessage(string $message)
-    {
-        $token = env('TELEGRAM_BOT_TOKEN');
-        $chatId = env('TELEGRAM_CHAT_ID');
+    protected $botToken;
+    protected $chatId;
 
-        if (!$token || !$chatId) {
-            Log::warning("TelegramService: Missing credentials in .env");
-            return false;
+    public function __construct()
+    {
+        $this->botToken = env('TELEGRAM_BOT_TOKEN');
+        $this->chatId = env('TELEGRAM_CHAT_ID', '1074091883'); // Default from user request
+    }
+
+    public function sendPaymentSuccess($transaction)
+    {
+        if (!$this->botToken) {
+            Log::warning('Telegram Bot Token not configured.');
+            return;
         }
 
+        $amount = number_format($transaction->amount, 2);
+        $currency = $transaction->currency;
+        $orderId = $transaction->order_id;
+        $date = now()->format('Y-m-d H:i:s');
+
+        $message = "✅ *Payment Received*\n\n" .
+            "💰 *Amount:* {$amount} {$currency}\n" .
+            "🆔 *Order ID:* `{$orderId}`\n" .
+            "📅 *Date:* {$date}\n" .
+            "🔗 *Status:* Success\n\n" .
+            "Thank you!";
+
+        $this->sendMessage($message);
+    }
+
+    public function sendMessage($message)
+    {
         try {
-            $response = Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
-                'chat_id' => $chatId,
+            $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
+
+            $response = Http::post($url, [
+                'chat_id' => $this->chatId,
                 'text' => $message,
-                'parse_mode' => 'HTML'
+                'parse_mode' => 'Markdown'
             ]);
 
-            if ($response->failed()) {
-                Log::error("TelegramService Failed: " . $response->body());
-                return false;
+            if (!$response->successful()) {
+                Log::error('Telegram Send Failed', ['body' => $response->body()]);
             }
-
-            return true;
         } catch (\Exception $e) {
-            Log::error("TelegramService Error: " . $e->getMessage());
-            return false;
+            Log::error('Telegram Exception', ['error' => $e->getMessage()]);
         }
     }
 }

@@ -22,10 +22,8 @@ import Attachments from "../views/portfolio/Attachments.vue";
 import LinkedInImport from "../views/portfolio/LinkedInImport.vue";
 
 import PaymentConfig from "../views/payment/PaymentConfig.vue";
-import MerchantInfo from "../views/payment/MerchantInfo.vue";
-import TestPayment from "../views/payment/TestPayment.vue";
+import PaymentSimulator from "../views/payment/PaymentSimulator.vue";
 import Transactions from "../views/payment/Transactions.vue";
-import GenerateToken from "../views/payment/GenerateToken.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,13 +43,11 @@ const router = createRouter({
         { path: "/portfolio/attachments", component: Attachments },
         { path: "/portfolio/linkedin-import", component: LinkedInImport },
         { path: "/payment/config", component: PaymentConfig },
-        { path: "/payment/merchant", component: MerchantInfo },
-        { path: "/payment/generate", component: TestPayment },
+        { path: "/payment/simulator", component: PaymentSimulator },
         { path: "/payment/transactions", component: Transactions },
         { path: "/settings", component: Settings },
         { path: "/security", component: Security },
         { path: "/security/backup", component: SecurityBackup },
-        { path: "/api/tokens", component: GenerateToken },
         // { path: "/ai/search", component: AiSearch },
         { path: "/ai/settings", component: AiSettings },
         { path: "/ai/chat", component: AiChat },

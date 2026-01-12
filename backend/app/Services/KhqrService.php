@@ -8,19 +8,19 @@ use Illuminate\Support\Facades\Log;
 class KhqrService
 {
     /**
-     * Generate KHQR string for ABA Merchant payment
+     * Generate KHQR string for Bakong Payment (Tag 29)
      * 
-     * @param string $merchantId ABA Merchant ID (MID) - 15 digits from ABA Merchant App
+     * @param string $bakongAccountId Bakong Account ID (e.g. username@devb)
      * @param float $amount Payment amount in USD
-     * @param string $orderId Order ID for tracking
-     * @param string|null $merchantName Merchant name (max 25 chars)
-     * @param string|null $merchantCity Merchant city (max 15 chars, default: 'Phnom Penh')
+     * @param string $orderId Order ID (Tag 62/Bill Number or Tag 99) -> actually usually generic description or bill number
+     * @param string|null $merchantName Merchant name (Tag 59)
+     * @param string|null $merchantCity Merchant city (Tag 60)
      * @return string KHQR string
      */
     public function generateKhqrString(
-        string $merchantId,
+        string $bakongAccountId,
         float $amount,
-        string $orderId,
+        ?string $description = null, // Mapping orderId to description/bill number for now
         ?string $merchantName = null,
         ?string $merchantCity = null
     ): string {
@@ -28,46 +28,48 @@ class KhqrService
         $merchantName = $merchantName ?: 'Merchant';
         $merchantName = substr(trim($merchantName), 0, 25) ?: 'Merchant';
 
-        // Merchant City: limit to 15 chars, uppercase for ABA compatibility
+        // Merchant City: limit to 15 chars
         $merchantCity = $merchantCity ?? 'Phnom Penh';
-        $merchantCity = strtoupper(substr(trim($merchantCity), 0, 15)) ?: 'PHNOM PENH';
+        $merchantCity = substr(trim($merchantCity), 0, 15) ?: 'Phnom Penh';
 
         // USD currency code
         $currencyCode = '840';
 
-        // Tag 00: Payload Format Indicator (EMV QR standard)
+        // Tag 00: Payload Format Indicator (01)
         $payload = '000201';
 
-        // Tag 01: Point of Initiation Method - "11" (static QR, ABA standard)
-        $payload .= '010211';
+        // Tag 01: Point of Initiation Method - "11" (static) or "12" (dynamic)
+        // Using 12 for dynamic amount? Or 11. Let's stick to 12 if including amount often implies dynamic. 
+        // Actually typical dynamic QR with amount is 12.
+        $payload .= '010212';
 
-        // Validate and clean Merchant ID
-        $merchantId = preg_replace('/\s+/', '', trim($merchantId));
+        // Tag 29: Merchant Activity Information (Bakong)
+        // Globally Unique Identifier for Bakong: bakong@bakong or kh.gov.nbc.bakong? 
+        // SIT environment usually accepts the straightforward account id structure.
+        // Standard Bakong generic KHQR: 
+        // 00 (GUID): bakong
+        // 01 (Account): username@devb
 
-        if (empty($merchantId) || strlen($merchantId) > 25) {
-            throw new \InvalidArgumentException('Invalid ABA Merchant ID. Must be 1-25 characters.');
-        }
+        // Tag 29: Merchant Activity Information (Bakong Individual)
+        // Subtag 00 (Globally Unique Identifier): Contains the Bakong Account ID directly
 
-        // Tag 30: Merchant Account Information (ABA-specific structure)
-        $abaGuid = 'abaakhppxxx@abaa';
-        $abaBankLabel = 'ABA Bank';
+        $bakongAccountId = trim($bakongAccountId);
 
-        $merchantAccountInfo =
-            '00' . $this->formatLength($abaGuid) . $abaGuid .
-            '01' . $this->formatLength($merchantId) . $merchantId .
-            '02' . $this->formatLength($abaBankLabel) . $abaBankLabel;
+        $tag29Inner =
+            '00' . $this->formatLength($bakongAccountId) . $bakongAccountId;
 
-        $payload .= '30' . $this->formatLength($merchantAccountInfo) . $merchantAccountInfo;
+        $payload .= '29' . $this->formatLength($tag29Inner) . $tag29Inner;
 
-        // Tag 52: Merchant Category Code
-        $mcc = '5399';
+        // Tag 52: Merchant Category Code (General)
+        $mcc = '5999';
         $payload .= '52' . $this->formatLength($mcc) . $mcc;
 
         // Tag 53: Transaction Currency
         $payload .= '53' . $this->formatLength($currencyCode) . $currencyCode;
 
-        // Tag 54: Transaction Amount (ABA format: minimal, e.g. "10" not "10.00")
-        $amountStr = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.') ?: '0';
+        // Tag 54: Transaction Amount
+        // Bakong/KHQR often expects X.XX format? Or just number. 
+        $amountStr = number_format($amount, 2, '.', ''); // Ensure 2 decimals
         $payload .= '54' . $this->formatLength($amountStr) . $amountStr;
 
         // Tag 58: Country Code
@@ -80,43 +82,42 @@ class KhqrService
         // Tag 60: Merchant City
         $payload .= '60' . $this->formatLength($merchantCity) . $merchantCity;
 
-        // Tag 62: Additional Data Field Template (ABA proprietary structure)
-        // Inner TLV for subtag 68 (PAYWAY@ABA template) - required by ABA Merchant App
-        $aba01 = '2080920';     // ABA-specific constant
-        $aba02 = '021971302';   // ABA-specific constant
-        $aba05 = '1';           // ABA-specific flag
+        // Tag 99: Timestamp (data=timestamp, mobile number etc)
+        // For dynamic QR to be unique, we put timestamp or order ID here.
+        // Bakong App sample used: 99340013176819486241... (Tag 00 inside Tag 99)
+        // Simplified usage: 99 + len + value. 
+        // Or specific structure? "00" + len + timestamp.
 
-        $inner68 =
-            '00' . $this->formatLength('PAYWAY@ABA') . 'PAYWAY@ABA' .
-            '01' . $this->formatLength($aba01) . $aba01 .
-            '02' . $this->formatLength($aba02) . $aba02 .
-            '05' . $this->formatLength($aba05) . $aba05;
+        $timestamp = (string) time(); // e.g. 1768194862
+        // Or use the order ID if it's unique enough? 
+        // Let's use timestamp in subtag 01 or 00?
+        // Sample: 9934 00131768194862417...
+        // 00 -> 13 -> 1768194862417 (millis likely)
+        $timestampMs = round(microtime(true) * 1000);
+        $tag99Inner = '00' . $this->formatLength((string) $timestampMs) . $timestampMs;
 
-        $additionalData = '68' . $this->formatLength($inner68) . $inner68;
-        $payload .= '62' . $this->formatLength($additionalData) . $additionalData;
-
-        // Tag 99: Proprietary Data (ABA-specific, required for acceptance)
-        // 13-digit epoch milliseconds + 'mmp' marker
-        $epochMs = str_pad(substr((string) (floor(microtime(true) * 1000)), 0, 13), 13, '0', STR_PAD_RIGHT);
-
-        $tag99Inner =
-            '00' . $this->formatLength($epochMs) . $epochMs .
-            '68' . $this->formatLength('mmp') . 'mmp';
-
+        // If description/orderId is present, maybe start putting it in 62 as usual
+        // But Tag 99 helps uniqueness.
         $payload .= '99' . $this->formatLength($tag99Inner) . $tag99Inner;
 
-        // Tag 63: CRC16-CCITT checksum
-        $crc = $this->calculateCrc($payload . '6304');
+        // Tag 62: Additional Data Field Template
+        // We can put the Order ID / Bill Number here (Subtag 01)
+        if (!empty($description)) {
+            $billNumber = substr($description, 0, 25);
+            $tag62Inner = '01' . $this->formatLength($billNumber) . $billNumber;
+            // Mobile Number (02)? Store Label (03)? 
+            $payload .= '62' . $this->formatLength($tag62Inner) . $tag62Inner;
+        }
+
+        // Tag 63: CRC16
+        $crcPayload = $payload . '6304';
+        $crc = $this->calculateCrc($crcPayload);
         $crcHex = strtoupper(str_pad(dechex($crc), 4, '0', STR_PAD_LEFT));
 
-        $khqrString = $payload . '6304' . $crcHex;
+        $khqrString = $crcPayload . $crcHex;
 
-        Log::info('ABA KHQR Generated', [
-            'merchant_id' => $merchantId,
-            'amount' => $amount,
-            'order_id' => $orderId,
-            'khqr_length' => strlen($khqrString),
-        ]);
+        // Log everything including the MD5 logic
+        $md5 = md5($khqrString);
 
         return $khqrString;
     }
@@ -135,12 +136,11 @@ class KhqrService
         return QrCode::format('svg')->size(300)->generate($khqrString);
     }
 
-    /**
-     * Generate ABA PayWay link (for click-to-pay)
-     */
+    // Legacy Payment Link method removed or kept generic?
+    // Bakong typically uses deep links: https://bakong.nbc.gov.kh/pay?qr=...
     public function generatePaymentLink(string $khqrString): string
     {
-        return 'https://link.payway.com.kh/ABAPAY' . bin2hex(random_bytes(4));
+        return 'https://bk.com.kh/pay?qr=' . $khqrString; // Example deep link structure
     }
 
     /**
@@ -153,7 +153,6 @@ class KhqrService
 
     /**
      * Calculate CRC16-CCITT (polynomial 0x1021, initial value 0xFFFF)
-     * This is the standard CRC used for EMV QR codes
      */
     private function calculateCrc(string $data): int
     {

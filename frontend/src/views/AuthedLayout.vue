@@ -225,8 +225,7 @@ const navGroups = [
     label: "Payment Gateway",
     items: [
       { to: "/payment/config", label: "Payment Config" },
-      { to: "/payment/merchant", label: "Merchant Info" },
-      { to: "/payment/generate", label: "Generate QR" },
+      { to: "/payment/simulator", label: "Payment Simulator" },
       { to: "/payment/transactions", label: "Transactions" },
     ],
   },
@@ -237,7 +236,6 @@ const navGroups = [
       { to: "/ai/settings", label: "Gemini Configuration" },
       { to: "/security", label: "Security & Tokens" },
       { to: "/security/backup", label: "Backups" },
-      { to: "/api/tokens", label: "API Access Tokens" },
     ],
   },
 ];
@@ -290,10 +288,10 @@ const titles = {
   "/portfolio/linkedin-import": "LinkedIn Import",
   "/crypto": "TradeMind AI",
   "/ai/chat": "Chat with AI",
+  "/ai/chat": "Chat with AI",
   "/payment/config": "Payment Config",
-  "/payment/test": "Test Payment",
+  "/payment/simulator": "Payment Simulator",
   "/payment/transactions": "Transactions",
-  "/payment/tokens": "Generate Token",
   "/settings": "Settings",
   "/security": "Security",
 };
