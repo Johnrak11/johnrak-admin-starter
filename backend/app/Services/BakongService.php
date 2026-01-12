@@ -30,10 +30,21 @@ class BakongService
         try {
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'application/json',
+                'Accept' => 'application/json, text/plain, */*',
                 'Content-Type' => 'application/json',
-                'Cache-Control' => 'no-cache',
-            ])->withToken($token)
+                'Referer' => 'https://bakong.nbc.gov.kh/',
+                'Origin' => 'https://bakong.nbc.gov.kh',
+                'Sec-Fetch-Mode' => 'cors',
+                'Sec-Fetch-Site' => 'same-site',
+            ])->withOptions([
+                        'verify' => true,
+                        'version' => 2.0, // Force HTTP/2 if available
+                        // Force TLS 1.2 or higher
+                        'curl' => [
+                            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+                            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                        ]
+                    ])->withToken($token)
                 ->post("{$this->baseUrl}/check_transaction_by_md5", [
                     'md5' => $md5
                 ]);
@@ -70,10 +81,17 @@ class BakongService
         try {
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'application/json',
+                'Accept' => 'application/json, text/plain, */*',
                 'Content-Type' => 'application/json',
-                'Cache-Control' => 'no-cache',
-            ])->post("{$this->baseUrl}/renew_token", [
+                'Referer' => 'https://bakong.nbc.gov.kh/',
+                'Origin' => 'https://bakong.nbc.gov.kh',
+            ])->withOptions([
+                        'verify' => true,
+                        'curl' => [
+                            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+                            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                        ]
+                    ])->post("{$this->baseUrl}/renew_token", [
                         'email' => $email
                     ]);
 
