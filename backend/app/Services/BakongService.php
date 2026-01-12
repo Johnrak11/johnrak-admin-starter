@@ -42,10 +42,16 @@ class BakongService
                 'status' => $response->status(),
                 'body' => $response->body()
             ]);
-            return null;
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'HTTP ' . $response->status() . ': ' . $response->body()
+            ];
         } catch (\Exception $e) {
             Log::error('Bakong Check Status Exception', ['error' => $e->getMessage()]);
-            return null;
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'Exception: ' . $e->getMessage()
+            ];
         }
     }
 
@@ -70,10 +76,16 @@ class BakongService
                 'body' => $response->body()
             ]);
 
-            return null;
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'HTTP ' . $response->status() . ': ' . $response->body()
+            ];
         } catch (\Exception $e) {
             Log::error('Bakong Renew Token Exception', ['error' => $e->getMessage()]);
-            return null;
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'Exception: ' . $e->getMessage()
+            ];
         }
     }
 }

@@ -45,28 +45,6 @@ services:
     depends_on:
       - backend
 
-  telegram-bot:
-    build:
-      context: ./telegramBotLstener
-      dockerfile: Dockerfile
-    container_name: johnrak-admin-telegram-bot
-    restart: unless-stopped
-    environment:
-      # Payment webhook URL - use external URL since backend is accessed via Caddy
-      # Default: https://admin.johnrak.online/api/payment/webhook
-      # Can be overridden via .env file
-      PAYMENT_WEBHOOK_URL: "https://admin.johnrak.online/api/payment/webhook"
-    env_file:
-      - ./telegramBotLstener/.env
-    networks:
-      - web_gateway
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    depends_on:
-      - backend
-      - frontend
-
 networks:
   web_gateway:
     external: true

@@ -21,11 +21,4 @@ jobs:
             docker compose up -d --build
             sleep 5
             docker exec johnrak-admin-backend php artisan migrate --force
-            echo "Checking Telegram bot status..."
-            if docker ps | grep -q johnrak-admin-telegram-bot; then
-              echo "✅ Telegram bot is running"
-              docker logs --tail 10 johnrak-admin-telegram-bot
-            else
-              echo "⚠️  Telegram bot is not running. Check logs: docker logs johnrak-admin-telegram-bot"
-            fi
             docker image prune -f
