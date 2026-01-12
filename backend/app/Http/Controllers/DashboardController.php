@@ -57,7 +57,22 @@ class DashboardController extends Controller
         // RAM Usage: Prefer reading /proc/meminfo on Linux/Docker (most reliable)
         $ramUsagePct = 0;
         try {
-            if (@is_readable('/proc/meminfo')) {
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // Windows RAM Check
+                $cmd = 'wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /Value';
+                $output = shell_exec($cmd);
+                if ($output) {
+                    preg_match('/TotalVisibleMemorySize=(\d+)/', $output, $totalMatches);
+                    preg_match('/FreePhysicalMemory=(\d+)/', $output, $freeMatches);
+
+                    if (isset($totalMatches[1], $freeMatches[1]) && $totalMatches[1] > 0) {
+                        $total = $totalMatches[1]; // in KB
+                        $free = $freeMatches[1];   // in KB
+                        $used = $total - $free;
+                        $ramUsagePct = round(($used / $total) * 100, 1);
+                    }
+                }
+            } elseif (@is_readable('/proc/meminfo')) {
                 $memInfo = file_get_contents('/proc/meminfo');
                 $total = 0;
                 $available = 0;
@@ -107,16 +122,25 @@ class DashboardController extends Controller
 
         // CPU Load
         $cpuLoad = 0;
-        $load = sys_getloadavg();
-        if ($load && isset($load[0])) {
-            $cpuLoad = $load[0];
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Windows CPU Check
+            $cmd = 'wmic cpu get loadpercentage';
+            $output = shell_exec($cmd);
+            if (preg_match('/(\d+)/', $output, $matches)) {
+                $cpuLoad = (float) $matches[1];
+            }
         } else {
-            // Fallback: Read /proc/loadavg
-            if (@is_readable('/proc/loadavg')) {
-                $content = file_get_contents('/proc/loadavg');
-                $parts = explode(' ', $content);
-                if (isset($parts[0])) {
-                    $cpuLoad = (float) $parts[0];
+            $load = sys_getloadavg();
+            if ($load && isset($load[0])) {
+                $cpuLoad = $load[0];
+            } else {
+                // Fallback: Read /proc/loadavg
+                if (@is_readable('/proc/loadavg')) {
+                    $content = file_get_contents('/proc/loadavg');
+                    $parts = explode(' ', $content);
+                    if (isset($parts[0])) {
+                        $cpuLoad = (float) $parts[0];
+                    }
                 }
             }
         }
