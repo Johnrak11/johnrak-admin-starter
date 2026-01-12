@@ -103,9 +103,8 @@
                 <Input
                   v-model="form.bakong_token"
                   type="password"
-                  placeholder="eyJhbG..."
+                  placeholder="Paste your token here..."
                   class="font-mono text-sm"
-                  readonly
                 />
                 <p class="text-xs text-muted-foreground">
                   Last generated:

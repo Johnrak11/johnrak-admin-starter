@@ -11,11 +11,16 @@ class BakongService
     // SIT: https://sit-api-bakong.nbc.gov.kh/v1
     // PROD: https://api-bakong.nbc.gov.kh/v1
     private $baseUrl = 'https://api-bakong.nbc.gov.kh/v1';
+    private $proxy = null;
 
     public function __construct()
     {
         // Allow override via config if set
         $this->baseUrl = config('services.bakong.base_url', 'https://api-bakong.nbc.gov.kh/v1');
+
+        // Proxy support for bypassing IP blocks
+        // Format: http://user:pass@1.2.3.4:8080 or just http://1.2.3.4:8080
+        $this->proxy = env('BAKONG_PROXY_URL', null);
     }
 
     /**
@@ -28,23 +33,28 @@ class BakongService
     public function checkTransactionStatus(string $token, string $md5)
     {
         try {
+            // Build options
+            $options = [
+                'verify' => true,
+                'version' => 2.0,
+                'curl' => [
+                    CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ]
+            ];
+
+            if ($this->proxy) {
+                $options['proxy'] = $this->proxy;
+            }
+
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept' => 'application/json, text/plain, */*',
                 'Content-Type' => 'application/json',
                 'Referer' => 'https://bakong.nbc.gov.kh/',
                 'Origin' => 'https://bakong.nbc.gov.kh',
-                'Sec-Fetch-Mode' => 'cors',
-                'Sec-Fetch-Site' => 'same-site',
-            ])->withOptions([
-                        'verify' => true,
-                        'version' => 2.0, // Force HTTP/2 if available
-                        // Force TLS 1.2 or higher
-                        'curl' => [
-                            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                        ]
-                    ])->withToken($token)
+            ])->withOptions($options)
+                ->withToken($token)
                 ->post("{$this->baseUrl}/check_transaction_by_md5", [
                     'md5' => $md5
                 ]);
@@ -79,21 +89,28 @@ class BakongService
     public function renewToken(string $email)
     {
         try {
+            $options = [
+                'verify' => true,
+                'curl' => [
+                    CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ]
+            ];
+
+            if ($this->proxy) {
+                $options['proxy'] = $this->proxy;
+            }
+
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept' => 'application/json, text/plain, */*',
                 'Content-Type' => 'application/json',
                 'Referer' => 'https://bakong.nbc.gov.kh/',
                 'Origin' => 'https://bakong.nbc.gov.kh',
-            ])->withOptions([
-                        'verify' => true,
-                        'curl' => [
-                            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                        ]
-                    ])->post("{$this->baseUrl}/renew_token", [
-                        'email' => $email
-                    ]);
+            ])->withOptions($options)
+                ->post("{$this->baseUrl}/renew_token", [
+                    'email' => $email
+                ]);
 
             if ($response->successful()) {
                 return $response->json();
