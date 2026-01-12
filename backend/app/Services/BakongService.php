@@ -28,7 +28,11 @@ class BakongService
     public function checkTransactionStatus(string $token, string $md5)
     {
         try {
-            $response = Http::withToken($token)
+            $response = Http::withHeaders([
+                'User-Agent' => 'BakongApp/1.0 (Android 10; Mobile)',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->withToken($token)
                 ->post("{$this->baseUrl}/check_transaction_by_md5", [
                     'md5' => $md5
                 ]);
@@ -63,9 +67,13 @@ class BakongService
     public function renewToken(string $email)
     {
         try {
-            $response = Http::post("{$this->baseUrl}/renew_token", [
-                'email' => $email
-            ]);
+            $response = Http::withHeaders([
+                'User-Agent' => 'BakongApp/1.0 (Android 10; Mobile)',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->post("{$this->baseUrl}/renew_token", [
+                        'email' => $email
+                    ]);
 
             if ($response->successful()) {
                 return $response->json();
