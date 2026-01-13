@@ -18,7 +18,9 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
     'bakong' => [
-        'base_url' => env('BAKONG_BASE_URL', 'https://api-bakong.nbc.gov.kh/v1'),
+        'base_url' => env('BAKONG_BASE_URL'),
+        'registered_email' => env('BAKONG_REGISTERED_EMAIL'),
+        'access_token' => env('BAKONG_ACCESS_TOKEN'),
     ],
 
 ];

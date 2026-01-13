@@ -10,22 +10,25 @@ class BakongService
     // Default to Production Environment
     // SIT: https://sit-api-bakong.nbc.gov.kh/v1
     // PROD: https://api-bakong.nbc.gov.kh/v1
-    private $baseUrl = 'https://api-bakong.nbc.gov.kh/v1';
+    private $baseUrl = '';
     private $proxy = null;
+    private $accessToken = '';
 
     public function __construct()
     {
         // Allow override via config if set
         $this->baseUrl = config('services.bakong.base_url', 'https://api-bakong.nbc.gov.kh/v1');
+        $this->accessToken = config('services.bakong.access_token', '');
 
         // Proxy support for bypassing IP blocks
         // Format: http://user:pass@1.2.3.4:8080 or just http://1.2.3.4:8080
         $this->proxy = env('BAKONG_PROXY_URL', null);
+
     }
 
     /**
      * Check transaction status by MD5 hash
-     * 
+     *
      * @param string $token Bearer token
      * @param string $md5 The MD5 hash of the KHQR string
      * @return array|null Response data or null on failure
@@ -33,6 +36,9 @@ class BakongService
     public function checkTransactionStatus(string $token, string $md5)
     {
         try {
+            if (empty($token)) {
+                $token = $this->accessToken;
+            }
             // Build options
             $options = [
                 'verify' => true,
