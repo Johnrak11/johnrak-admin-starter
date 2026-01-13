@@ -13,11 +13,13 @@ class BakongService
     private $baseUrl = '';
     private $proxy = null;
     private $accessToken = '';
+    private $isVerify = false;
+    private $version = 'v1';
 
     public function __construct()
     {
         // Allow override via config if set
-        $this->baseUrl = config('services.bakong.base_url', 'https://api-bakong.nbc.gov.kh/v1');
+        $this->baseUrl = rtrim(config('services.bakong.base_url', 'https://api-bakong.nbc.gov.kh'), '/') . '/' . $this->version;
         $this->accessToken = config('services.bakong.access_token', '');
 
         // Proxy support for bypassing IP blocks
@@ -41,7 +43,7 @@ class BakongService
             }
             // Build options
             $options = [
-                'verify' => true,
+                'verify' => false,
                 'version' => 2.0,
                 'curl' => [
                     CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
@@ -96,7 +98,7 @@ class BakongService
     {
         try {
             $options = [
-                'verify' => true,
+                'verify' => false,
                 'curl' => [
                     CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
                     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
