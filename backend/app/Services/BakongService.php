@@ -89,6 +89,73 @@ class BakongService
         }
     }
 
+    /**
+     * SPECIAL FUNCTION: Check transaction via SSH Tunnel (Staging Only)
+     * usage: set BAKONG_USE_TUNNEL=true in .env
+     */
+    public function checkTransactionStatusViaTunnel(string $token, string $md5)
+    {
+        try {
+            if (empty($token)) {
+                $token = $this->accessToken;
+            }
+
+            // The Tunnel Configuration (Hardcoded for Staging)
+            $tunnelIp = '172.19.0.1'; // The Docker Gateway IP you found
+            $tunnelPort = 9000;
+            $targetHost = 'api-bakong.nbc.gov.kh';
+
+            $options = [
+                'verify' => false, // Disable SSL verify for the tunnel connection
+                'http_errors' => false,
+                'curl' => [
+                    CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    
+                    // THE MAGIC: Force connection to Tunnel IP, but keep Hostname valid
+                    CURLOPT_CONNECT_TO => ["{$targetHost}:443:{$tunnelIp}:{$tunnelPort}"],
+                ]
+            ];
+
+            // Use the REAL URL (https://api-bakong.nbc.gov.kh)
+            // The CURLOPT_CONNECT_TO above will hijack the traffic
+            $url = "https://{$targetHost}/v1/check_transaction_by_md5";
+
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'Referer' => "https://{$targetHost}/",
+                'Origin' => "https://{$targetHost}",
+            ])->withOptions($options)
+                ->withToken($token)
+                ->post($url, [
+                    'md5' => $md5
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::error('Bakong Tunnel Check Failed', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'Tunnel Error: ' . $response->status()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Bakong Tunnel Exception', ['error' => $e->getMessage()]);
+            return [
+                'responseCode' => -1,
+                'responseMessage' => 'Exception: ' . $e->getMessage()
+            ];
+        }
+    }
+
 
     /**
      * Renew Token
