@@ -16,7 +16,7 @@ class TelegramService
         $this->chatId = env('TELEGRAM_CHAT_ID', '1074091883'); // Default from user request
     }
 
-    public function sendPaymentSuccess($transaction)
+    public function sendPaymentSuccess($transaction, $chatId = null)
     {
         if (!$this->botToken) {
             Log::warning('Telegram Bot Token not configured.');
@@ -35,19 +35,32 @@ class TelegramService
             "🔗 *Status:* Success\n\n" .
             "Thank you!";
 
-        $this->sendMessage($message);
+        $this->sendMessage($message, $chatId, 'Markdown');
     }
 
-    public function sendMessage($message)
+    public function sendMessage($message, $chatId = null, $parseMode = null)
     {
         try {
+            // Use override or default
+            $targetChatId = $chatId ?? $this->chatId;
+
+            if (!$targetChatId) {
+                Log::warning('Telegram Chat ID missing');
+                return;
+            }
+
             $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
 
-            $response = Http::post($url, [
-                'chat_id' => $this->chatId,
+            $payload = [
+                'chat_id' => $targetChatId,
                 'text' => $message,
-                'parse_mode' => 'Markdown'
-            ]);
+            ];
+
+            if ($parseMode) {
+                $payload['parse_mode'] = $parseMode;
+            }
+
+            $response = Http::post($url, $payload);
 
             if (!$response->successful()) {
                 Log::error('Telegram Send Failed', ['body' => $response->body()]);

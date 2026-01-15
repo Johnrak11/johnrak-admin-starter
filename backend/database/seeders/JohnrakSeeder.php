@@ -10,9 +10,9 @@ class JohnrakSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('JOHNRAK_ADMIN_EMAIL', 'admin@johnrak.online');
-        $password = env('JOHNRAK_ADMIN_PASSWORD', 'ChangeThisPassword!');
-        $name = env('JOHNRAK_ADMIN_NAME', 'Johnrak Owner');
+        $email = env('SUPER_ADMIN_EMAIL', 'admin@johnrak.online');
+        $password = env('SUPER_ADMIN_PASSWORD', 'ChangeThisPassword!');
+        $name = env('SUPER_ADMIN_NAME', 'Johnrak Owner');
 
         User::updateOrCreate(
             ['email' => $email],

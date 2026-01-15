@@ -202,16 +202,8 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Bakong Token not provided'], 400);
         }
 
-        $result = null;
-        $isTunnel = true;
-        // Check .env variable to decide which path to take
-        if ($isTunnel) {
-            // 1. Use the new Tunnel Function
-            $result = $bakongService->checkTransactionStatusViaTunnel($token, $validated['md5']);
-        } else {
-            // 2. Use your Original Function (Untouched)
-            $result = $bakongService->checkTransactionStatus($token, $validated['md5']);
-        }
+        // Result handled seamlessly by service based on config (Tunnel or Direct)
+        $result = $bakongService->checkTransactionStatus($token, $validated['md5']);
 
         if (!$result) {
             return response()->json(['status' => 'unknown', 'message' => 'Failed to check status'], 500);

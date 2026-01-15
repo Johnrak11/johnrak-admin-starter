@@ -21,15 +21,15 @@
   - Set values:
     - `APP_URL=http://localhost:8000`
     - `FRONTEND_ORIGIN=http://localhost:5173`
-    - `JOHNRAK_ADMIN_EMAIL=admin@johnrak.online`
-    - `JOHNRAK_ADMIN_PASSWORD=ChangeThisPassword!` (change)
+    - `SUPER_ADMIN_EMAIL=admin@johnrak.online`
+    - `SUPER_ADMIN_PASSWORD=ChangeThisPassword!` (change)
     - `PORTFOLIO_SYNC_TOKEN_TTL_MINUTES=1440`
   - Install: `composer install`
   - Key: `php artisan key:generate`
   - Migrate: `php artisan migrate`
   - Seed owner: `php artisan db:seed --class=Database\Seeders\JohnrakSeeder`
   - Optional: seed portfolio demo data (replaces lists): `php artisan db:seed --class=Database\Seeders\PortfolioFromJsonSeeder`
-    - Ensure `.env` has `JOHNRAK_ADMIN_EMAIL`, `JOHNRAK_ADMIN_PASSWORD`, `JOHNRAK_ADMIN_NAME` set
+    - Ensure `.env` has `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `SUPER_ADMIN_NAME` set
     - Run owner seeder first; portfolio seeder requires the owner user to exist
     - Portfolio seeder reads from `database/data/profile.json` and replaces experience, education, skills, certifications, and projects for that owner
   - Serve: `php artisan serve`

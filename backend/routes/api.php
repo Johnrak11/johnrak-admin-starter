@@ -14,6 +14,7 @@ use App\Http\Controllers\ClientPortfolioSyncController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ApiClientController;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\CryptoController;
@@ -64,10 +65,16 @@ Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('securi
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable'])->middleware('throttle:login');
     Route::get('/2fa/status', [TwoFactorController::class, 'status']);
     Route::post('/2fa/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:login');
+    Route::post('/generate-key', [TwoFactorController::class, 'generateRandomKey']);
     // Route::post('/portfolio-sync/token', [ClientPortfolioSyncController::class, 'issueToken'])->middleware('throttle:login'); // Removed manual flow
     Route::get('/backup/config', [BackupController::class, 'getConfig']);
     Route::post('/backup/config', [BackupController::class, 'saveConfig']);
     Route::post('/backup/run', [BackupController::class, 'run'])->middleware('throttle:login');
+
+    // API Clients (DB-Backed Keys)
+    Route::get('/api-clients', [ApiClientController::class, 'index']);
+    Route::post('/api-clients', [ApiClientController::class, 'store']);
+    Route::delete('/api-clients/{client}', [ApiClientController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'ensure.owner', 'audit.log'])->prefix('ai')->group(function () {
@@ -101,4 +108,11 @@ Route::prefix('payment')->group(function () {
         Route::post('/bakong/check-status', [\App\Http\Controllers\PaymentController::class, 'checkStatus']);
         Route::post('/bakong/renew-token', [\App\Http\Controllers\PaymentController::class, 'renewToken']);
     });
+});
+
+// External Service API (Encrypted + Shared Secret)
+Route::middleware(['external.api'])->prefix('external')->group(function () {
+    Route::post('/generate-qr', [\App\Http\Controllers\ExternalPaymentController::class, 'generateQr']);
+    Route::post('/check-status', [\App\Http\Controllers\ExternalPaymentController::class, 'checkStatus']);
+    Route::post('/check-status-batch', [\App\Http\Controllers\ExternalPaymentController::class, 'checkStatusBatch']);
 });

@@ -9,7 +9,7 @@ class KhqrService
 {
     /**
      * Generate KHQR string for Bakong Payment (Tag 29)
-     * 
+     *
      * @param string $bakongAccountId Bakong Account ID (e.g. username@devb)
      * @param float $amount Payment amount in USD
      * @param string $orderId Order ID (Tag 62/Bill Number or Tag 99) -> actually usually generic description or bill number
@@ -20,7 +20,8 @@ class KhqrService
     public function generateKhqrString(
         string $bakongAccountId,
         float $amount,
-        ?string $description = null, // Mapping orderId to description/bill number for now
+        string $currency = 'USD', // Added currency parameter
+        ?string $description = null,
         ?string $merchantName = null,
         ?string $merchantCity = null
     ): string {
@@ -32,21 +33,21 @@ class KhqrService
         $merchantCity = $merchantCity ?? 'Phnom Penh';
         $merchantCity = substr(trim($merchantCity), 0, 15) ?: 'Phnom Penh';
 
-        // USD currency code
-        $currencyCode = '840';
+        // USD: 840, KHR: 116
+        $currencyCode = ($currency === 'KHR') ? '116' : '840';
 
         // Tag 00: Payload Format Indicator (01)
         $payload = '000201';
 
         // Tag 01: Point of Initiation Method - "11" (static) or "12" (dynamic)
-        // Using 12 for dynamic amount? Or 11. Let's stick to 12 if including amount often implies dynamic. 
+        // Using 12 for dynamic amount? Or 11. Let's stick to 12 if including amount often implies dynamic.
         // Actually typical dynamic QR with amount is 12.
         $payload .= '010212';
 
         // Tag 29: Merchant Activity Information (Bakong)
-        // Globally Unique Identifier for Bakong: bakong@bakong or kh.gov.nbc.bakong? 
+        // Globally Unique Identifier for Bakong: bakong@bakong or kh.gov.nbc.bakong?
         // SIT environment usually accepts the straightforward account id structure.
-        // Standard Bakong generic KHQR: 
+        // Standard Bakong generic KHQR:
         // 00 (GUID): bakong
         // 01 (Account): username@devb
 
@@ -68,7 +69,7 @@ class KhqrService
         $payload .= '53' . $this->formatLength($currencyCode) . $currencyCode;
 
         // Tag 54: Transaction Amount
-        // Bakong/KHQR often expects X.XX format? Or just number. 
+        // Bakong/KHQR often expects X.XX format? Or just number.
         $amountStr = number_format($amount, 2, '.', ''); // Ensure 2 decimals
         $payload .= '54' . $this->formatLength($amountStr) . $amountStr;
 
@@ -85,11 +86,11 @@ class KhqrService
         // Tag 99: Timestamp (data=timestamp, mobile number etc)
         // For dynamic QR to be unique, we put timestamp or order ID here.
         // Bakong App sample used: 99340013176819486241... (Tag 00 inside Tag 99)
-        // Simplified usage: 99 + len + value. 
+        // Simplified usage: 99 + len + value.
         // Or specific structure? "00" + len + timestamp.
 
         $timestamp = (string) time(); // e.g. 1768194862
-        // Or use the order ID if it's unique enough? 
+        // Or use the order ID if it's unique enough?
         // Let's use timestamp in subtag 01 or 00?
         // Sample: 9934 00131768194862417...
         // 00 -> 13 -> 1768194862417 (millis likely)
@@ -105,7 +106,7 @@ class KhqrService
         if (!empty($description)) {
             $billNumber = substr($description, 0, 25);
             $tag62Inner = '01' . $this->formatLength($billNumber) . $billNumber;
-            // Mobile Number (02)? Store Label (03)? 
+            // Mobile Number (02)? Store Label (03)?
             $payload .= '62' . $this->formatLength($tag62Inner) . $tag62Inner;
         }
 

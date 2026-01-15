@@ -50,13 +50,13 @@ class TwoFactorController extends Controller
         $validator->validate();
 
         $secret = $user->getTwoFactorSecretDecrypted();
-        if (! $secret) {
+        if (!$secret) {
             return response()->json(['message' => '2FA not initialized'], 422);
         }
 
         $google2fa = new Google2FA();
         $valid = $google2fa->verifyKey($secret, $request->input('code'));
-        if (! $valid) {
+        if (!$valid) {
             return response()->json(['message' => 'Invalid code'], 422);
         }
 
@@ -88,7 +88,7 @@ class TwoFactorController extends Controller
                 $ok = $google2fa->verifyKey($secret, $request->input('code'));
             }
         }
-        if (! $ok) {
+        if (!$ok) {
             return response()->json(['message' => 'Invalid verification'], 422);
         }
 
@@ -121,13 +121,13 @@ class TwoFactorController extends Controller
         $validator->validate();
 
         $secret = $user->getTwoFactorSecretDecrypted();
-        if (! $secret) {
+        if (!$secret) {
             return response()->json(['message' => '2FA not enabled'], 422);
         }
 
         $google2fa = new Google2FA();
         $valid = $google2fa->verifyKey($secret, $request->input('code'));
-        if (! $valid) {
+        if (!$valid) {
             return response()->json(['message' => 'Invalid code'], 422);
         }
 
@@ -136,5 +136,12 @@ class TwoFactorController extends Controller
         $user->save();
 
         return response()->json(['recovery_codes' => $codes]);
+    }
+
+    public function generateRandomKey()
+    {
+        return response()->json([
+            'key' => \Illuminate\Support\Str::random(32)
+        ]);
     }
 }

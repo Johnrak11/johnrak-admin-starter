@@ -136,6 +136,92 @@
         </div>
       </div>
     </Card>
+
+    <Card>
+      <template #header>
+        <div class="text-lg font-semibold">API Clients</div>
+        <div class="text-sm text-muted-foreground">
+          Manage access for external applications (e.g. SnapOrder).
+        </div>
+      </template>
+      <div class="space-y-4">
+        <!-- List Clients -->
+        <div class="space-y-2">
+          <div
+            v-for="client in clients"
+            :key="client.id"
+            class="flex items-center justify-between rounded-lg border border-border p-3"
+          >
+            <div>
+              <div class="font-medium">{{ client.name }}</div>
+              <div class="text-xs text-muted-foreground">
+                Created: {{ new Date(client.created_at).toLocaleDateString() }}
+              </div>
+              <div class="text-xs text-muted-foreground">
+                Last Used:
+                {{
+                  client.last_used_at
+                    ? new Date(client.last_used_at).toLocaleString()
+                    : "Never"
+                }}
+              </div>
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              @click="revokeClient(client.id)"
+              :disabled="loading"
+              >Revoke</Button
+            >
+          </div>
+          <div
+            v-if="clients.length === 0"
+            class="text-sm text-muted-foreground text-center py-4"
+          >
+            No active clients.
+          </div>
+        </div>
+
+        <!-- Create New -->
+        <div class="flex items-end gap-2 border-t border-border pt-4">
+          <div class="space-y-1 flex-1">
+            <Label>New Client Name</Label>
+            <Input v-model="newClientName" placeholder="e.g. SnapOrder Prod" />
+          </div>
+          <Button @click="createClient" :disabled="!newClientName || loading"
+            >Create</Button
+          >
+        </div>
+
+        <!-- Secret Display Modal/Area -->
+        <div
+          v-if="createdSecret"
+          class="mt-4 rounded-lg bg-green-50 p-4 border border-green-200"
+        >
+          <div class="text-sm font-semibold text-green-800 mb-2">
+            ✅ API Key Generated
+          </div>
+          <div class="text-xs text-green-700 mb-2">
+            Copy this key now. It will <strong>never</strong> be shown again.
+          </div>
+          <div
+            class="font-mono bg-white p-2 rounded border border-green-300 break-all select-all"
+          >
+            {{ createdSecret }}
+          </div>
+          <div class="mt-2 text-xs text-green-600">
+            Add this to your external app's <code>.env</code> file.
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="mt-2 w-full"
+            @click="createdSecret = ''"
+            >Done</Button
+          >
+        </div>
+      </div>
+    </Card>
   </div>
 </template>
 
@@ -246,5 +332,43 @@ async function regen() {
   }
 }
 
-onMounted(loadStatus);
+const clients = ref([]);
+const newClientName = ref("");
+const createdSecret = ref("");
+
+async function loadClients() {
+  const res = await api().get("/api/security/api-clients");
+  clients.value = res.data;
+}
+
+async function createClient() {
+  loading.value = true;
+  try {
+    const res = await api().post("/api/security/api-clients", {
+      name: newClientName.value,
+    });
+    clients.value.unshift(res.data.client);
+    createdSecret.value = res.data.plain_text_key;
+    newClientName.value = "";
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function revokeClient(id) {
+  if (!confirm("Are you sure? This will break the integration immediately."))
+    return;
+  loading.value = true;
+  try {
+    await api().delete(`/api/security/api-clients/${id}`);
+    clients.value = clients.value.filter((c) => c.id !== id);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadStatus();
+  loadClients();
+});
 </script>

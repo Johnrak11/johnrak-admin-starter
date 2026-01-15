@@ -13,185 +13,139 @@ class BakongService
     private $baseUrl = '';
     private $proxy = null;
     private $accessToken = '';
-    private $isVerify = false;
     private $version = 'v1';
+
+    // Tunnel Config
+    private $useTunnel = false;
+    private $tunnelIp = '';
+    private $tunnelPort = 9000;
+    private $targetHost = 'api-bakong.nbc.gov.kh';
 
     public function __construct()
     {
         // Allow override via config if set
-        $this->baseUrl = rtrim(config('services.bakong.base_url', 'https://api-bakong.nbc.gov.kh'), '/') . '/' . $this->version;
+        $this->baseUrl = rtrim(config('services.bakong.base_url', env('BAKONG_BASE_URL', 'https://api-bakong.nbc.gov.kh')), '/') . '/' . $this->version;
         $this->accessToken = config('services.bakong.access_token', '');
 
-        // Proxy support for bypassing IP blocks
-        // Format: http://user:pass@1.2.3.4:8080 or just http://1.2.3.4:8080
-        $this->proxy = env('BAKONG_PROXY_URL', null);
+        // Extract host for tunnel connect-to usage
+        $parsedUrl = parse_url($this->baseUrl);
+        $this->targetHost = $parsedUrl['host'] ?? 'api-bakong.nbc.gov.kh';
 
+        // Proxy support
+        $this->proxy = config('services.bakong.proxy_url');
+
+        // Tunnel support
+        // Explicitly check .env to avoid config cache issues during dev
+        $this->useTunnel = filter_var(env('BAKONG_TUNNEL_ENABLED', config('services.bakong.tunnel_enabled', false)), FILTER_VALIDATE_BOOLEAN);
+        $this->tunnelIp = env('BAKONG_TUNNEL_IP', config('services.bakong.tunnel_ip', '172.19.0.1'));
+        $this->tunnelPort = env('BAKONG_TUNNEL_PORT', config('services.bakong.tunnel_port', 9000));
     }
 
     /**
      * Check transaction status by MD5 hash
-     *
-     * @param string $token Bearer token
-     * @param string $md5 The MD5 hash of the KHQR string
-     * @return array|null Response data or null on failure
      */
-    public function checkTransactionStatus(string $token, string $md5)
+    public function checkTransactionStatus(?string $token, string $md5)
     {
-        try {
-            if (empty($token)) {
-                $token = $this->accessToken;
-            }
-            // Build options
-            $options = [
-                'verify' => false,
-                'version' => 2.0,
-                'curl' => [
-                    CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                ]
-            ];
-
-            if ($this->proxy) {
-                $options['proxy'] = $this->proxy;
-            }
-
-            $response = Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'application/json, text/plain, */*',
-                'Content-Type' => 'application/json',
-                'Referer' => 'https://bakong.nbc.gov.kh/',
-                'Origin' => 'https://bakong.nbc.gov.kh',
-            ])->withOptions($options)
-                ->withToken($token)
-                ->post("{$this->baseUrl}/check_transaction_by_md5", [
-                    'md5' => $md5
-                ]);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            Log::error('Bakong Check Status Failed', [
-                'md5' => $md5,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-            return [
-                'responseCode' => -1,
-                'responseMessage' => 'HTTP ' . $response->status() . ': ' . $response->body()
-            ];
-        } catch (\Exception $e) {
-            Log::error('Bakong Check Status Exception', ['error' => $e->getMessage()]);
-            return [
-                'responseCode' => -1,
-                'responseMessage' => 'Exception: ' . $e->getMessage()
-            ];
-        }
+        return $this->sendRequest('post', '/check_transaction_by_md5', [
+            'md5' => $md5
+        ], $token);
     }
 
     /**
-     * SPECIAL FUNCTION: Check transaction via SSH Tunnel (Staging Only)
-     * usage: set BAKONG_USE_TUNNEL=true in .env
+     * Check transaction status by MD5 List
+     * Endpoint: {{baseUrl}}/v1/check_transaction_by_md5_list
      */
-    public function checkTransactionStatusViaTunnel(string $token, string $md5)
+    public function checkTransactionStatusList(array $md5List)
     {
-        try {
-            if (empty($token)) {
-                $token = $this->accessToken;
-            }
-
-            // The Tunnel Configuration (Hardcoded for Staging)
-            $tunnelIp = '172.19.0.1'; // The Docker Gateway IP you found
-            $tunnelPort = 9000;
-            $targetHost = 'api-bakong.nbc.gov.kh';
-
-            $options = [
-                'verify' => false, // Disable SSL verify for the tunnel connection
-                'http_errors' => false,
-                'curl' => [
-                    CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                    
-                    // THE MAGIC: Force connection to Tunnel IP, but keep Hostname valid
-                    CURLOPT_CONNECT_TO => ["{$targetHost}:443:{$tunnelIp}:{$tunnelPort}"],
-                ]
-            ];
-
-            // Use the REAL URL (https://api-bakong.nbc.gov.kh)
-            // The CURLOPT_CONNECT_TO above will hijack the traffic
-            $url = "https://{$targetHost}/v1/check_transaction_by_md5";
-
-            $response = Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-                'Referer' => "https://{$targetHost}/",
-                'Origin' => "https://{$targetHost}",
-            ])->withOptions($options)
-                ->withToken($token)
-                ->post($url, [
-                    'md5' => $md5
-                ]);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            Log::error('Bakong Tunnel Check Failed', [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-            
-            return [
-                'responseCode' => -1,
-                'responseMessage' => 'Tunnel Error: ' . $response->status()
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Bakong Tunnel Exception', ['error' => $e->getMessage()]);
-            return [
-                'responseCode' => -1,
-                'responseMessage' => 'Exception: ' . $e->getMessage()
-            ];
-        }
+        return $this->sendRequest('post', '/check_transaction_by_md5_list', $md5List);
     }
-
 
     /**
      * Renew Token
-     * Endpoint: {{baseUrl}}/v1/renew_token
      */
     public function renewToken(string $email)
     {
+        // Renew token usually doesn't need auth token, or needs specific handling?
+        // Documentation says POST /v1/renew_token with email body. No Bearer needed usually.
+        return $this->sendRequest('post', '/renew_token', [
+            'email' => $email
+        ]);
+    }
+
+    /**
+     * Generate Deep Link (Short Link)
+     */
+    public function generateDeeplink(string $qr, ?array $sourceInfo = null)
+    {
+        // Default Source Info if not provided
+        if (empty($sourceInfo)) {
+            $sourceInfo = [
+                'appIconUrl' => 'https://bakong.nbc.gov.kh/images/logo.svg',
+                'appName' => 'Bakong Payment',
+                'appDeepLinkCallback' => 'https://bakong.nbc.gov.kh/'
+            ];
+        }
+
+        return $this->sendRequest('post', '/generate_deeplink_by_qr', [
+            'qr' => $qr,
+            'sourceInfo' => $sourceInfo
+        ]);
+    }
+
+    /**
+     * Centralized Request Handler
+     * Handles Tunneling, Proxy, Headers, and Error Logging
+     */
+    private function sendRequest(string $method, string $endpoint, array $data = [], ?string $token = null)
+    {
         try {
+            // 1. Prepare Configuration
+            $url = $this->baseUrl . $endpoint;
+            $token = $token ?: $this->accessToken;
+
+            $headers = [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept' => 'application/json, text/plain, */*',
+                'Content-Type' => 'application/json',
+                // Important for WAF/CloudFront to validate host match despite tunnel
+                'Referer' => "https://{$this->targetHost}/",
+                'Origin' => "https://{$this->targetHost}",
+            ];
+
             $options = [
-                'verify' => false,
+                'verify' => !$this->useTunnel, // Secure by default (True), unless Tunnel is ON (False)
+                'http_errors' => false, // We handle errors manually
                 'curl' => [
                     CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
                     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
                 ]
             ];
 
-            if ($this->proxy) {
+            // 2. Decide Tunnel vs Proxy
+            if ($this->useTunnel) {
+                // FORCE Connection via Tunnel IP
+                $options['curl'][CURLOPT_CONNECT_TO] = ["{$this->targetHost}:443:{$this->tunnelIp}:{$this->tunnelPort}"];
+
+                // IMPORTANT: When tunneling, we often hit a raw IP or internal gateway.
+                // We MUST trust the host header works, but if SSL fails, verify=false handles it.
+            } elseif ($this->proxy) {
+                // Use Standard HTTP Proxy
                 $options['proxy'] = $this->proxy;
             }
 
-            $response = Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept' => 'application/json, text/plain, */*',
-                'Content-Type' => 'application/json',
-                'Referer' => 'https://bakong.nbc.gov.kh/',
-                'Origin' => 'https://bakong.nbc.gov.kh',
-            ])->withOptions($options)
-                ->post("{$this->baseUrl}/renew_token", [
-                    'email' => $email
-                ]);
+            // 3. Execute Request
+            $response = Http::withHeaders($headers)
+                        ->withOptions($options)
+                        ->withToken($token)
+                ->$method($url, $data);
 
+            // 4. Handle Response
             if ($response->successful()) {
                 return $response->json();
             }
 
-            Log::error('Bakong Renew Token Failed', [
+            // 5. Log & Return Error
+            Log::error("Bakong {$endpoint} Failed", [
                 'status' => $response->status(),
                 'body' => $response->body()
             ]);
@@ -200,8 +154,9 @@ class BakongService
                 'responseCode' => -1,
                 'responseMessage' => 'HTTP ' . $response->status() . ': ' . $response->body()
             ];
+
         } catch (\Exception $e) {
-            Log::error('Bakong Renew Token Exception', ['error' => $e->getMessage()]);
+            Log::error("Bakong {$endpoint} Exception", ['error' => $e->getMessage()]);
             return [
                 'responseCode' => -1,
                 'responseMessage' => 'Exception: ' . $e->getMessage()

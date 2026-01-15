@@ -16,7 +16,7 @@ class PortfolioFromJsonSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('JOHNRAK_ADMIN_EMAIL', 'admin@johnrak.online');
+        $email = env('SUPER_ADMIN_EMAIL', 'admin@johnrak.online');
         $user = User::where('email', $email)->firstOrFail();
 
         $path = base_path('database/data/profile.json');
@@ -129,8 +129,10 @@ class PortfolioFromJsonSeeder extends Seeder
 
     private function toDate(?string $in): ?string
     {
-        if (! $in) return null;
-        if (strtolower($in) === 'present') return null;
+        if (!$in)
+            return null;
+        if (strtolower($in) === 'present')
+            return null;
         if (preg_match('/^\d{4}-\d{2}$/', $in)) {
             return $in . '-01';
         }

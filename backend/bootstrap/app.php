@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // though typically it's auto-applied to 'api' or 'web' depending on config.
         // For standard CORS, Laravel 11 auto-registers it if HandleCors is present.
         // We can explicitly trust proxies here if behind a load balancer/reverse proxy.
-
+    
         $middleware->trustProxies(at: '*');
 
         $middleware->validateCsrfTokens(except: [
@@ -27,10 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Force CORS to run on all requests
         // $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-
+    
         $middleware->alias([
             'ensure.owner' => EnsureOwner::class,
             'audit.log' => AuditLogMiddleware::class,
+            'external.api' => \App\Http\Middleware\VerifyExternalApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
