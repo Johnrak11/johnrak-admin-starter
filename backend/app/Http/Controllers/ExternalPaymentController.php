@@ -72,22 +72,25 @@ class ExternalPaymentController extends Controller
         }
 
         // 4. Store Transaction
-        $transaction = Transaction::create([
-            'user_id' => $user->id,
-            'order_id' => $orderId,
-            'amount' => $amount,
-            'currency' => $currency,
-            'status' => 'pending',
-            'remark' => "External API" . ($telegramChatId ? " (Tel: $telegramChatId)" : ""),
-            'khqr_string' => $khqrString,
-            'expires_at' => now()->addHours(24),
-        ]);
+        // Prevent duplicate Order ID: Update if exists, Create if new.
+        $transaction = Transaction::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'order_id' => $orderId
+            ],
+            [
+                'amount' => $amount,
+                'currency' => $currency,
+                'status' => 'pending', // Reset to pending if refreshing QR
+                'remark' => "External API" . ($telegramChatId ? " (Tel: $telegramChatId)" : ""),
+                'khqr_string' => $khqrString,
+                'expires_at' => now()->addHours(24),
+                // Preserve original created_at but update updated_at automatically
+            ]
+        );
 
-        // Save Telegram Chat ID in metadata (using a hack since we don't have a meta column, appending to remark or description is brittle, but user asked for it in prompt flow. Ideally migration.)
-        // Actually, user said "Store his TELEGRAM_CHAT_ID".
-        // I will overload the 'remark' field or 'description' if possible.
-        // Let's use the 'remark' field properly: "EXT|$telegramChatId"
         if ($telegramChatId) {
+            // Ensure remark is correct even if updated
             $transaction->remark = "EXT|" . $telegramChatId;
             $transaction->save();
         }
@@ -189,23 +192,29 @@ class ExternalPaymentController extends Controller
                 // Update remark to remove internal metadata if preferred, or keep it.
 
                 $data = $apiResult['data'] ?? null;
-                $amount = number_format($data['amount'] ?? 0, 2);
                 $currency = $data['currency'] ?? 'KHR';
+                $decimals = ($currency === 'KHR') ? 0 : 2;
+                $amount = number_format($data['amount'] ?? 0, $decimals);
+
                 $hash = $data['hash'] ?? 'N/A'; // Use Hash as Trx ID fallback
                 $externalRef = $data['externalRef'] ?? $hash; // Prefer External Ref
-                $payer = $data['fromAccountId'] ?? 'Guest';
 
-                // Truncate/Format payer if it's an email/id
-                // e.g. "foo@bar" -> "foo (*bar)" stylistic choice?
-                // For now, keep as is or simple formatting.
+                $rawPayer = $data['fromAccountId'] ?? 'Guest';
+                $payerName = $rawPayer;
+                $payerBank = '';
+                if (str_contains($rawPayer, '@')) {
+                    $parts = explode('@', $rawPayer);
+                    $payerName = $parts[0];
+                    $payerBank = isset($parts[1]) ? " (" . ucfirst($parts[1]) . ")" : "";
+                }
 
                 $trxDate = isset($data['createdDateMs'])
                     ? \Carbon\Carbon::createFromTimestampMs($data['createdDateMs'])->format('M d, h:i A')
                     : now()->format('M d, h:i A');
 
                 // Fetch Merchant Name
-                $merchantName = 'Shop';
-                if ($localTx->user_id) {
+                $merchantName = $payload['merchant_name'] ?? 'Shop';
+                if (empty($payload['merchant_name']) && $localTx->user_id) {
                     $conf = PaymentConfig::where('user_id', $localTx->user_id)->first();
                     if ($conf)
                         $merchantName = $conf->merchant_name;
@@ -213,12 +222,18 @@ class ExternalPaymentController extends Controller
 
                 $chatId = $payload['telegram_chat_id'] ?? null;
 
+                // Fallback: Check if Chat ID is stored in Transaction Remark (EXT|ChatID)
+                if (!$chatId && Str::startsWith($localTx->remark, 'EXT|')) {
+                    $parts = explode('|', $localTx->remark);
+                    $chatId = $parts[1] ?? null;
+                }
+
                 // Format: $0.01 paid by YUN VORAK (*436) on Jan 07, 06:42 PM via KHQR at {merchant_name}. Order ID {id}. Trx. ID: 123
-                // Adjusting for currency symbol
                 $amountDisplay = ($currency === 'USD') ? "$$amount" : "$amount $currency";
 
+                // Construct formatted message
                 $msg = "✅ *Payment Received*\n\n" .
-                    "{$amountDisplay} paid by *{$payer}* on {$trxDate} via KHQR at *{$merchantName}*.\n" .
+                    "{$amountDisplay} paid by *{$payerName}{$payerBank}* on {$trxDate} via KHQR at *{$merchantName}*.\n" .
                     "Order ID: `{$localTx->order_id}`.\n" .
                     "Trx. ID: `{$externalRef}`";
 
